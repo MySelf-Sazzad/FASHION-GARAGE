@@ -19,9 +19,10 @@ var FIREBASE_CONFIG = {
 // Firebase Initialize
 firebase.initializeApp(FIREBASE_CONFIG);
 var auth = firebase.auth();
-// ★ ADDED: Firestore initialize
-var db = firebase.firestore();
 var googleProvider = new firebase.auth.GoogleAuthProvider();
+// Google Sign-in এ অতিরিক্ত permissions যদি চান
+// googleProvider.addScope('profile');
+// googleProvider.addScope('email');
 
 /* ==========================================
    বেস রিসেট এবং গ্লোবাল ভ্যারিয়েবল সেটআপ
@@ -46,7 +47,7 @@ var SUB_CATS = {
   men:['jacket','shirt','trousers','sweater','polo'],
   women:['dress','top','skirt','coat','blouse'],
   watch:['chronograph','minimalist','diver','smart'],
-  bag:['tove','crossbody','backpack','clutch'],
+  bag:['tote','crossbody','backpack','clutch'],
   perfume:['oud','floral','citrus','musk'],
   jewelry:['necklace','earrings','bracelet','ring'],
   sunglasses:['aviator','wayfarer','round','sport'],
@@ -69,8 +70,7 @@ var DEFAULT_USERS = [
   {name:'Test User',email:'user@example.com',phone:'01911223344'}
 ];
 var DEFAULT_PRODUCTS = [];
-// ★ CHANGED: পুরোনো স্টোর ফাংশন রেখেছে - admin panel এর জন্য ব্যবহার হিসেবে থাকবে
-function loadProducts(){try{var s=localStorage.getItem('fg_products');return s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));}catch(e){return JSON.parse(JSON.stringify(DEFAULT_PRODUCTS);}}
+function loadProducts(){try{var s=localStorage.getItem('fg_products');return s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));}catch(e){return JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));}}
 function saveProducts(){try{localStorage.setItem('fg_products',JSON.stringify(products));}catch(e){showToast('Storage error!');}}
 function loadOrders(){try{var s=localStorage.getItem('fg_orders');return s?JSON.parse(s):[];}catch(e){return [];}}
 function saveOrders(){localStorage.setItem('fg_orders',JSON.stringify(orders));}
@@ -96,13 +96,14 @@ var admFormColors = [];
 var admFormSizes = [];
 var ADMIN_DEFAULT_USER = 'admin';
 var ADMIN_DEFAULT_PASS = 'admin123';
-var isAuthLoading = false;
-// ★ ADDED: স্টোরের রিয়েল-টাইম লিসেনার ট্র্যাকার স্টেটাস
-var storeListenerActive = false;
+var isAuthLoading = false; // Firebase auth loading state
 
 /* ==========================================
    FIREBASE USER PROFILE MANAGEMENT
    ========================================== */
+// Firebase UID দিয়ে localStorage এ user profile সেভ করা হয়
+// কারণ Firebase Auth এ শুধু email, displayName, photoURL থাকে
+// phone এবং অন্যান্য info localStorage এ রাখা হয়
 function getFirebaseUsers(){
   try{var s=localStorage.getItem('fg_firebase_users');return s?JSON.parse(s):{};}catch(e){return {};}
 }
@@ -128,10 +129,13 @@ function removeFirebaseUserProfile(uid){
 auth.onAuthStateChanged(function(user){
   isAuthLoading = false;
   if(user){
+    // User is signed in - update UI
     updateUserUI(user);
   } else {
+    // User is signed out
     updateUserUI(null);
   }
+  // Handle pending cart action after auth resolves
   if(pendingCartAction && user){
     var action = pendingCartAction;
     pendingCartAction = null;
@@ -171,6 +175,7 @@ function doLogin(){
     return;
   }
 
+  // Show loading state
   var btn = errEl.parentElement.querySelector('.co-submit');
   var originalText = btn.textContent;
   btn.textContent = 'Logging in...';
@@ -178,13 +183,14 @@ function doLogin(){
 
   auth.signInWithEmailAndPassword(email, password)
     .then(function(userCredential){
+      // Login successful - onAuthStateChanged will handle UI
       closeLogin();
       var profile = getFirebaseUserProfile(userCredential.user.uid);
       var name = profile ? profile.name : (userCredential.user.displayName || 'User');
       showToast('Welcome back, ' + name + '!');
     })
     .catch(function(error){
-      var msg = getFirebaseErrMsg(error.code);
+      var msg = getFirebaseErrorMsg(error.code);
       errEl.textContent = msg;
       errEl.classList.add('show');
       btn.textContent = originalText;
@@ -225,7 +231,9 @@ function doRegister(){
   auth.createUserWithEmailAndPassword(email, password)
     .then(function(userCredential){
       var user = userCredential.user;
+      // Update displayName in Firebase
       return user.updateProfile({ displayName: name }).then(function(){
+        // Save extra profile data locally
         saveFirebaseUserProfile(user.uid, {
           name: name,
           email: email,
@@ -237,7 +245,7 @@ function doRegister(){
       });
     })
     .catch(function(error){
-      var msg = getFirebaseErrMsg(error.code);
+      var msg = getFirebaseErrorMsg(error.code);
       errEl.textContent = msg;
       errEl.classList.add('show');
       btn.textContent = originalText;
@@ -248,6 +256,7 @@ function doRegister(){
 // Google Sign-In
 function googleSignIn(){
   var errEl = null;
+  // Determine which form is visible to show errors
   if(document.getElementById('loginFormDiv').style.display !== 'none'){
     errEl = document.getElementById('loginError');
   } else if(document.getElementById('regFormDiv').style.display !== 'none'){
@@ -261,6 +270,7 @@ function googleSignIn(){
       var profile = getFirebaseUserProfile(user.uid);
 
       if(!profile){
+        // First time Google sign-in - save profile
         saveFirebaseUserProfile(user.uid, {
           name: user.displayName || 'Google User',
           email: user.email,
@@ -276,9 +286,10 @@ function googleSignIn(){
     })
     .catch(function(error){
       if(error.code === 'auth/popup-closed-by-user'){
+        // User closed the popup - don't show error
         return;
       }
-      var msg = getFirebaseErrMsg(error.code);
+      var msg = getFirebaseErrorMsg(error.code);
       if(errEl){
         errEl.textContent = msg;
         errEl.classList.add('show');
@@ -321,7 +332,7 @@ function doForgotPassword(){
       document.getElementById('forgotEmail').value = '';
     })
     .catch(function(error){
-      var msg = getFirebaseErrMsg(error.code);
+      var msg = getFirebaseErrorMsg(error.code);
       errEl.textContent = msg;
       errEl.classList.add('show');
       btn.textContent = originalText;
@@ -334,12 +345,13 @@ function doLogout(){
   auth.signOut().then(function(){
     showToast('Logged out successfully');
   }).catch(function(error){
+    // Even if error, clear local state
     showToast('Logged out successfully');
   });
 }
 
 // Firebase Error Code to User-Friendly Message
-function getFirebaseErrMsg(code){
+function getFirebaseErrorMsg(code){
   var messages = {
     'auth/user-not-found': 'No account found with this email. Please register first.',
     'auth/wrong-password': 'Incorrect password. Please try again.',
@@ -379,6 +391,7 @@ function closeLogin(){
   document.getElementById('loginOv').classList.remove('active');
   document.getElementById('loginModal').classList.remove('active');
   document.body.style.overflow = '';
+  // Clear all form fields
   document.getElementById('loginEmail').value = '';
   document.getElementById('loginPass').value = '';
   document.getElementById('regName').value = '';
@@ -390,6 +403,7 @@ function closeLogin(){
   document.getElementById('regError').classList.remove('show');
   document.getElementById('forgotError').classList.remove('show');
   document.getElementById('forgotSuccess').classList.remove('show');
+  // Reset button states
   document.querySelectorAll('.login-modal .co-submit').forEach(function(btn){
     btn.disabled = false;
   });
@@ -456,8 +470,6 @@ function setAdminPass(p){localStorage.setItem('fg_admin_pass',p);}
 function handleHash(){if(window.location.hash==='#admin'){showAdminLogin();}else{hideAdmin();}}
 window.addEventListener('hashchange',handleHash);
 function showAdminLogin(){
-  // ★ ADDED: স্টোরের লিসেনার বন্ধ করুন
-  stopStoreListener();
   document.getElementById('storeWrapper').style.display='none';
   document.querySelector('.main-nav').style.display='none';
   document.getElementById('adminLoginOv').style.display='flex';
@@ -475,15 +487,7 @@ function hideAdmin(){
   document.getElementById('adminPanel').style.display='none';
   document.body.style.overflow='';
 }
-function adminGoBack(){
-  // ★ ADDED: স্টোর লিসেনার রিস্টার্ট চালু করুন
-  window.location.hash='';
-  hideAdmin();
-  products=loadProducts();
-  orders=loadOrders();
-  startStoreListener();
-  showPage('home');
-}
+function adminGoBack(){window.location.hash='';hideAdmin();products=loadProducts();orders=loadOrders();showPage('home');}
 function adminDoLogin(){
   var u=document.getElementById('adminUser').value.trim();
   var p=document.getElementById('adminPass').value;
@@ -497,17 +501,7 @@ function adminDoLogin(){
   document.getElementById('adminUserDisp').textContent='Admin';
   adminShowSec('dashboard');
 }
-// ★ CHANGED: অ্যাডমিন লগআউট এ লিসেনার শুরু করুন
-function adminDoLogout(){
-  window.location.hash='';
-  hideAdmin();
-  products=loadProducts();
-  orders=loadOrders();
-  // ★ ADDED: স্টোর লিসেনার রিস্টার্ট চালু করুন
-  startStoreListener();
-  showPage('home');
-  showToast('Admin logged out');
-}
+function adminDoLogout(){window.location.hash='';hideAdmin();products=loadProducts();orders=loadOrders();showPage('home');showToast('Admin logged out');}
 function adminShowSec(sec){
   document.querySelectorAll('.admin-sec').forEach(function(s){s.classList.remove('active');});
   document.querySelectorAll('.admin-snav a').forEach(function(a){a.classList.remove('active');});
@@ -552,7 +546,7 @@ function renderAdminDashboard(){
   html+='<div class="adm-table-wrap"><div class="adm-table-hdr"><h3>Products by Category</h3></div>';
   html+='<table class="adm-table"><thead><tr><th>Category</th><th>Count</th></tr></thead><tbody>';
   for(var c in cats){html+='<tr><td><span class="adm-table-cat">'+c+'</span></td><td>'+cats[c]+'</td></tr>';}
-  html+='</tbody></table></div></div></div>';
+  html+='</tbody></table></div></div>';
   document.getElementById('admDashboard').innerHTML=html;
 }
 var admProdSearchQ='';
@@ -570,8 +564,8 @@ function renderAdminProducts(){
   html+='</select>';
   html+='<button class="adm-btn" onclick="openAddProductModal()"><i class="fas fa-plus"></i> Add Product</button>';
   html+='</div></div>';
-  if(!list.length){html+='<div class="adm-table-empty"><i class="fas fa-box-open"></i>No products found</div>';}
-  else{
+  if(!list.length){html+='<div class="adm-table-empty"><i class="fas fa-box-open"></i>No products found</div>';
+  }else{
     html+='<div style="overflow-x:auto"><table class="adm-table"><thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th></tr></thead><tbody>';
     list.forEach(function(p){
       html+='<tr>';
@@ -636,14 +630,16 @@ function renderProductForm(p){
   });
   html+='</div></div>';
   html+='<div class="adm-form-group"><label>Tag</label><select id="afTag"><option value="">None</option>';
-  ['New','Hot','Sale'].forEach(function(t){html+='<option value="'+t+'"'+(p.tag===t?' selected':'')+'>'+t+'</option>';});  html+='</select></div>';
+  ['New','Hot','Sale'].forEach(function(t){html+='<option value="'+t+'"'+(p.tag===t?' selected':'')+'>'+t+'</option>';});
+  html+='</select></div>';
   html+='<div class="adm-form-group" style="display:flex;align-items:flex-end;padding-bottom:2px"><label class="adm-form-check"><input type="checkbox" id="afStock" '+(p.inStock?'checked':'')+'><span>In Stock</span></label></div>';
   html+='<div class="adm-form-full adm-form-group"><label>Description</label><textarea id="afDesc" rows="3" placeholder="Product description">'+escHtml(p.description||'')+'</textarea></div>';
-  html+='<div class="adm-form-bottom"><button class="adm-btn adm-btn-outline" type="button" onclick="closeAdmModal()">Cancel</button><button class="adm-btn" type="button" onclick="saveProductFromModal()"><i class="fas fa-save"></i> Save Product</button></div></div></div>';
+  html+='<div class="adm-form-bottom"><button class="adm-btn adm-btn-outline" type="button" onclick="closeAdmModal()">Cancel</button><button class="adm-btn" type="button" onclick="saveProductFromModal()"><i class="fas fa-save"></i> Save Product</button></div>';
+  html+='</div>';
   document.getElementById('admModalBody').innerHTML=html;
   updateSubCatOptions(p.subCategory);
 }
-function escHtml(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escHtml(s){if(!s)return '';return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function previewImgUrl(val){
   var prev=document.getElementById('afImgPreview');
   if(val){prev.innerHTML='<img src="'+val+'" onerror="this.parentElement.innerHTML=\'<span class=placeholder>Invalid URL</span>\'">';}
@@ -667,7 +663,8 @@ function updateSubCatOptions(sel){
   var el=document.getElementById('afSubCat');
   var cats=SUB_CATS[cat]||[];
   var html='<option value="">Select Sub-Category</option>';
-  cats.forEach(function(c){html+='<option value="'+c+'"'+(sel===c?' selected':'')+'>'+SUB_CAT_LABELS[c]+'</option>';});  el.innerHTML=html;
+  cats.forEach(function(c){html+='<option value="'+c+'"'+(sel===c?' selected':'')+'>'+SUB_CAT_LABELS[c]+'</option>';});
+  el.innerHTML=html;
   var sizeEl=document.getElementById('afSizePicks');
   var sizesToShow=(cat==='perfume')?PERFUME_SIZES:ADMIN_SIZES;
   var sizeHtml='';
@@ -695,22 +692,16 @@ function saveProductFromModal(){
   var prodData={name:name,price:price,oldPrice:oldPrice,category:category,subCategory:subCategory,image:image,colors:admFormColors.slice(),sizes:admFormSizes.slice(),inStock:inStock,tag:tag,description:description};
   if(admEditId){
     var idx=products.findIndex(function(p){return p.id===admEditId;});
-    if(idx!==-1){prodData.id=admEditId;products[idx]=prodData;}
-    saveProducts();
-    // ★ ADDED: Firestore এও সেভ করুন
-    saveProductToFirestore(prodData, admEditId);
-  }
-  else{
+    if(idx!==-1){prodData.id=admEditId;products[idx]=prodData;saveProducts();showToast('Product updated successfully');}
+  }else{
     var maxId=products.reduce(function(max,p){return p.id>max?p.id:max;},0);
     prodData.id=maxId+1;
     products.push(prodData);
     saveProducts();
-    // ★ ADDED: Firestore এও সেভ করুন
-    saveProductToFirestore(prodData, null);
+    showToast('Product added successfully');
   }
   closeAdmModal();
   renderAdminProducts();
-  showToast('Product saved successfully');
 }
 function deleteProduct(id){
   var p=products.find(function(x){return x.id===id;});
@@ -718,8 +709,6 @@ function deleteProduct(id){
   if(!confirm('Are you sure you want to delete "'+p.name+'"?'))return;
   products=products.filter(function(x){return x.id!==id;});
   saveProducts();
-  // ★ ADDED: Firestore থেকেও ডিলিট করুন
-  deleteProductFromFirestore(id);
   renderAdminProducts();
   showToast('Product deleted');
 }
@@ -732,8 +721,8 @@ function renderAdminOrders(){
   html+='<div class="adm-table-hdr"><h3>All Orders ('+list.length+')</h3><div class="adm-table-actions">';
   html+='<div class="adm-search-wrap"><i class="fas fa-search"></i><input type="text" class="adm-search" placeholder="Search orders..." value="'+admOrderSearchQ+'" oninput="admOrderSearchQ=this.value;renderAdminOrders()"></div>';
   html+='</div></div>';
-  if(!list.length){html+='<div class="adm-table-empty"><i class="fas fa-inbox"></i>No orders found</div>';}
-  else{
+  if(!list.length){html+='<div class="adm-table-empty"><i class="fas fa-inbox"></i>No orders found</div>';
+  }else{
     html+='<div style="overflow-x:auto"><table class="adm-table"><thead><tr><th>Order ID</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     list.forEach(function(o){
       var itemNames=o.items.map(function(it){return it.name;}).join(', ');
@@ -744,9 +733,9 @@ function renderAdminOrders(){
       html+='<td>'+o.customer.name+'<br><span style="font-size:11px;color:var(--lg)">'+o.customer.phone+'</span></td>';
       html+='<td style="font-size:12px;color:var(--lg)">'+o.items.length+' item(s)<br><span style="font-size:11px;color:rgba(255,255,255,.4)">'+itemNames+'</span></td>';
       html+='<td style="font-weight:600">'+fmtPrice(o.total)+'</td>';
-      html+='<td>'+(o.paid?'<span class="adm-paid-badge">Paid</span>'+(o.txnId?'<br><span style="font-size:10px;color:var(--lg)">Txn: '+o.txnId+'</span>':'<span class="adm-unpaid-badge">Unpaid</span>')+'</td>';
+      html+='<td>'+(o.paid?'<span class="adm-paid-badge">Paid</span>'+(o.txnId?'<br><span style="font-size:10px;color:var(--lg)">Txn: '+o.txnId+'</span>':''):'<span class="adm-unpaid-badge">Unpaid</span>')+'</td>';
       html+='<td><span class="adm-status '+o.status+'">'+o.status+'</span></td>';
-      html+='<td><div class="adm-actions"><button class="adm-act-btn" title="View Details" onclick="openOrderDetailModal(\''+o.id+'\')"><i class="fas fa-eye"></i></button><button class="adm-act-btn del" title="Delete Order" onclick="deleteOrder(\''+o.id+'\')"><i class="fas fa-trash"></i></button></div></td></tr>';
+      html+='<td><div class="adm-actions"><button class="adm-act-btn" title="View Details" onclick="openOrderDetailModal(\''+o.id+'\')"><i class="fas fa-eye"></i></button><button class="adm-act-btn del" title="Delete Order" onclick="deleteOrder(\''+o.id+'\')"><i class="fas fa-trash"></i></button></div></td>';
       html+='</tr>';
     });
     html+='</tbody></table></div>';
@@ -762,14 +751,16 @@ function openOrderDetailModal(id){
   html+='<div class="adm-order-info-card"><h4>Shipping Info</h4><p>'+o.customer.address+'</p>'+(o.customer.notes?'<p><strong>Notes:</strong> '+o.customer.notes+'</p>':'')+'</div>';
   html+='</div>';
   html+='<div class="adm-order-info" style="margin-bottom:20px">';
-  html+='<div class="adm-order-info-card"><h4>Payment Info</h4><p><strong>Method:</strong> '+(o.payMethod==='cod'?'Cash on Delivery':o.payMethod==='bkash'?'bKash':'Nagad')+'</p><p><strong>Status:</strong> '+(o.paid?'<span class="adm-paid-badge">Paid</span>':'<span class="adm-unpaid-badge">Unpaid</span>')+'</p>'+(o.txnId?'<p><strong>Txn:</strong> '+o.txnId+'</p>':'')+'</div>';
-  html+='<div class="adm-order-info-card"><h4>Order Info</h4><p><strong>Order ID:</strong> <span style="color:var(--gold)">'+o.id+'</span></p><p><strong>Date:</strong> '+o.date+'</p><p><strong>Status:</strong> <span class="adm-status '+o.status+'">'+o.status+'</span></p></div></div></div>';
-  html+='<h4 style="font-family:var(--fh);font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Items</h4>';
+  html+='<div class="adm-order-info-card"><h4>Payment Info</h4><p><strong>Method:</strong> '+(o.payMethod==='cod'?'Cash on Delivery':o.payMethod==='bkash'?'bKash':'Nagad')+'</p><p><strong>Status:</strong> '+(o.paid?'<span class="adm-paid-badge">Paid</span>':'<span class="adm-unpaid-badge">Unpaid</span>')+'</p>'+(o.txnId?'<p><strong>Transaction ID:</strong> '+o.txnId+'</p>':'')+'</div>';
+  html+='<div class="adm-order-info-card"><h4>Order Info</h4><p><strong>Order ID:</strong> <span style="color:var(--gold)">'+o.id+'</span></p><p><strong>Date:</strong> '+o.date+'</p><p><strong>Status:</strong> <span class="adm-status '+o.status+'">'+o.status+'</span></p></div>';
+  html+='</div>';
+  html+='<h4 style="font-family:var(--fh);font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Order Items</h4>';
   html+='<div class="adm-order-items">';
   o.items.forEach(function(item){
-    html+='<div class="adm-order-item"><img src="'+item.image+'" onerror="this.src=\'https://via.placeholder.com/50x60/121212/d4a017?text=Img\'">';
-    html+='<div class="adm-order-item-info"><h5>'+item.name+'</h5><p>'+(item.color?'Color: '+item.color:'')+(item.size?' | Size: '+item.size:'')+' | Qty: '+item.qty+'</p></div></div>';
-    html+='<div class="adm-order-item-price">'+fmtPrice(item.price*item.qty)+'</div></div>';
+    html+='<div class="adm-order-item">';
+    html+='<img src="'+item.image+'" onerror="this.src=\'https://via.placeholder.com/50x60/121212/d4a017?text=Img\'">';
+    html+='<div class="adm-order-item-info"><h5>'+item.name+'</h5><p>'+(item.color?'Color: '+item.color:'')+(item.size?' | Size: '+item.size:'')+' | Qty: '+item.qty+'</p></div>';
+    html+='<div class="adm-order-item-price">'+fmtPrice(item.price*item.qty)+'</div>';
     html+='</div>';
   });
   html+='</div>';
@@ -777,8 +768,10 @@ function openOrderDetailModal(id){
   html+='<div style="margin-top:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">';
   html+='<label style="font-family:var(--fh);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--lg)">Update Status:</label>';
   html+='<select id="admOrderStatus" style="padding:10px 16px;background:var(--bg);border:1px solid rgba(255,255,255,.08);color:var(--w);outline:none;cursor:pointer">';
-  ['pending','processing','shipped','delivered'].forEach(function(s){html+='<option value="'+s+'"'+(o.status===s?' selected':'')+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>';});  html+='</select>';
-  html+='<button class="adm-btn" onclick="updateOrderStatus(\''+o.id+'\')"><i class="fas fa-save"></i> Update</button></button></div>';
+  ['pending','processing','shipped','delivered'].forEach(function(s){html+='<option value="'+s+'"'+(o.status===s?' selected':'')+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>';});
+  html+='</select>';
+  html+='<button class="adm-btn" onclick="updateOrderStatus(\''+o.id+'\')"><i class="fas fa-save"></i> Update</button>';
+  html+='</div>';
   document.getElementById('admOrderBody').innerHTML=html;
   document.getElementById('admOrderOv').classList.add('active');
   document.getElementById('admOrderModal').classList.add('active');
@@ -802,29 +795,29 @@ function renderAdminSettings(){
   html+='<div class="adm-form-group"><label>Current Password</label><input type="password" id="setCurrPass"></div>';
   html+='<div class="adm-form-group"><label>New Password</label><input type="password" id="setNewPass"></div>';
   html+='<div class="adm-form-group"><label>Confirm New Password</label><input type="password" id="setConfPass"></div>';
-  html+='<button class="adm-btn" onclick="changeAdminPass()"><i class="fas fa-key"></i> Update Password</button></div></div>';
+  html+='<button class="adm-btn" onclick="changeAdminPass()"><i class="fas fa-key"></i> Update Password</button></div>';
   html+='<div class="adm-settings-card"><h3>Data Management</h3>';
   html+='<p style="font-size:13px;color:var(--lg);margin-bottom:16px">Manage your store data.</p>';
   html+='<div style="display:flex;gap:12px;flex-wrap:wrap">';
   html+='<button class="adm-btn adm-btn-outline" onclick="exportData()"><i class="fas fa-download"></i> Export All Data</button>';
   html+='<button class="adm-btn adm-btn-outline" onclick="document.getElementById(\'importFileInput\').click()"><i class="fas fa-upload"></i> Import Products</button>';
   html+='<input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importData(event)">';
-  html+='</div></div></div>';
+  html+='</div></div>';
   html+='<div class="adm-settings-card adm-danger-zone"><h3>Danger Zone</h3>';
   html+='<p>These actions are irreversible.</p>';
   html+='<div style="display:flex;gap:12px;flex-wrap:wrap">';
   html+='<button class="adm-btn adm-btn-danger" onclick="resetProducts()"><i class="fas fa-box-open"></i> Reset Products</button>';
   html+='<button class="adm-btn adm-btn-danger" onclick="resetAllData()"><i class="fas fa-trash-alt"></i> Reset Everything</button>';
-  html+='</div></div></div>';
+  html+='</div></div>';
   document.getElementById('admSettings').innerHTML=html;
 }
 function changeAdminPass(){
   var curr=document.getElementById('setCurrPass').value;
   var newP=document.getElementById('setNewPass').value;
   var conf=document.getElementById('setConfPass').value;
-  if(curr!==getAdminPass()){showToast('Current password incorrect');return;}
-  if(!newP||newP.length<4){showToast('Min 4 characters');return;}
-  if(newP!==conf){showToast('Passwords don\'t match');return;}
+  if(curr!==getAdminPass()){showToast('Current password is incorrect');return;}
+  if(!newP||newP.length<4){showToast('New password must be at least 4 characters');return;}
+  if(newP!==conf){showToast('New passwords do not match');return;}
   setAdminPass(newP);
   document.getElementById('setCurrPass').value='';
   document.getElementById('setNewPass').value='';
@@ -852,8 +845,6 @@ function resetProducts(){
 function resetAllData(){
   if(!confirm('WARNING: This will delete ALL data. Continue?'))return;
   localStorage.removeItem('fg_products');localStorage.removeItem('fg_orders');localStorage.removeItem('fg_nextOrderId');localStorage.removeItem('fg_firebase_users');
-  // ★ ADDED: Firestore ওয়েবসেও ডিলিট করুন
-  (function(){ try{ ['products','orders','users','storeConfig'].forEach(function(c){ db.collection(c).get().then(function(s){ s.forEach(function(d){ d.ref.delete(); }); }); }catch(e){} }); }catch(e){} })();
   products=JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));orders=[];nextOrderId=1001;saveProducts();saveOrders();saveNextOrderId();
   adminShowSec('dashboard');showToast('All data has been reset');
 }
@@ -861,18 +852,13 @@ function resetAllData(){
 /* ==========================================
    PAGE NAVIGATION & SPA
    ========================================== */
-// ★ CHANGED: async করা হয়েছে - এখানে Firestore থেকে লোড করে
 document.addEventListener('DOMContentLoaded',function(){
-  startStoreListener();
   initHeroSlider();initScrollEffects();renderTrending();
   if(window.location.hash==='#admin'){handleHash();}else{window.scrollTo(0,0);}
 });
-async function showPage(page, subFilter){
+function showPage(page,subFilter){
   if(window.location.hash==='#admin')return;
-  // ★ ADDED: লিসেনার লিসেনার চালু করুন
-  if(!storeListenerActive) startStoreListener();
-  // ★ CHANGED: localStorage এর পরিবে না, এখনে Firestore থেকে লোড করুন
-  loadProductsFromDB();
+  products=loadProducts();
   document.querySelectorAll('.page-sec').forEach(function(s){s.classList.remove('active');});
   window.scrollTo({top:0,behavior:'auto'});
   document.querySelectorAll('[data-nav]').forEach(function(a){a.classList.remove('active');});
@@ -889,36 +875,326 @@ async function showPage(page, subFilter){
     var accTypes={watch:'Watches',bag:'Bags',perfume:'Perfumes',jewelry:'Jewelry',sunglasses:'Sunglasses',homedecor:'Home Decor'};
     var sf=subFilter||null;
     document.getElementById('accBreadcrumb').textContent=sf?accTypes[sf]||'Accessories':'Accessories';
-    document.getElementById('accTitle').textContent=sf?(accTypes[sf]||'Accessories':'Accessories';
+    document.getElementById('accTitle').textContent=sf?accTypes[sf]||'Accessories':'Accessories';
     currentPageInfo={page:'accessories',gridId:'accGrid',countId:'accCount',filterId:'accFilter',subFilter:sf};
     initCategoryPage('accessories','accGrid','accCount','accFilter',sf);
   }
   else if(page==='offer'){document.getElementById('offerPage').classList.add('active');currentPageInfo={page:'offer',gridId:'offerGrid',countId:'offerCount',filterId:'offerFilter',subFilter:null};initCategoryPage('offer','offerGrid','offerCount','offerFilter',null);}
 }
 function closeMob(){document.getElementById('mobToggle').classList.remove('active');document.getElementById('mobNav').classList.remove('active');document.getElementById('mobOverlay').classList.remove('active');document.body.style.overflow='';}
-document.getElementById('mobToggle').addEventListener('click',function(){this.classList.toggle('active');document.getElementById('mobNav').classList.toggle('active');document.getElementById('mobOverlay').classList.toggle('active');document.body.style.overflow=this.classList.contains('active')?'hidden':'';});});
+document.getElementById('mobToggle').addEventListener('click',function(){this.classList.toggle('active');document.getElementById('mobNav').classList.toggle('active');document.getElementById('mobOverlay').classList.toggle('active');document.body.style.overflow=this.classList.contains('active')?'hidden':'';});
 document.getElementById('mobOverlay').addEventListener('click',closeMob);
 function toggleMobAcc(e){e.preventDefault();document.getElementById('mobSub').classList.toggle('show');document.getElementById('mobAccTog').classList.toggle('open');}
+
+/* ==========================================
+   SCROLL EFFECTS & HERO SLIDER
+   ========================================== */
 function initScrollEffects(){
   var nav=document.getElementById('mainNav');
   var stt=document.getElementById('scrollTop');
   window.addEventListener('scroll',function(){nav.classList.toggle('scrolled',window.scrollY>50);stt.classList.toggle('visible',window.scrollY>400);});
   var obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});},{threshold:0.1});
-  document.querySelectorAll('.fade-in').forEach(function(el){obs.observe(el);});});
+  document.querySelectorAll('.fade-in').forEach(function(el){obs.observe(el);});
 }
 function initHeroSlider(){
-  var t=document.getElementById('heroTrack');
-  var sl=t.children;
-  var dc=document.getElementById('heroDots');
-  for(var i=0;i<sl.length;i++){
-    var d=document.createElement('div');d.className='dot'+(i===0?' active':'');d.onclick=(function(idx){return function(){goToSlide(idx);};})(i);dc.appendChild(d);
+  var track=document.getElementById('heroTrack');
+  var slides=track.children;
+  var dotsC=document.getElementById('heroDots');
+  for(var i=0;i<slides.length;i++){
+    var d=document.createElement('div');d.className='dot'+(i===0?' active':'');
+    d.onclick=(function(idx){return function(){goToSlide(idx);};})(i);
+    dotsC.appendChild(d);
   }
   startAutoSlide();
 }
-function goToSlide(n){var sl=document.getElementById('heroTrack').children;currentSlide=((n%sl.length)+sl.length)%sl.length;document.getElementById('heroTrack').style.transform='translateX(-'+currentSlide*100+'%)';document.querySelectorAll('#heroDots .dot').forEach(function(d,i){d.classList.toggle('active',i===currentSlide);});}
+function goToSlide(n){var slides=document.getElementById('heroTrack').children;currentSlide=((n%slides.length)+slides.length)%slides.length;document.getElementById('heroTrack').style.transform='translateX(-'+currentSlide*100+'%)';document.querySelectorAll('#heroDots .dot').forEach(function(d,i){d.classList.toggle('active',i===currentSlide);});}
 function heroSlide(dir){goToSlide(currentSlide+dir);resetAutoSlide();}
 function startAutoSlide(){slideInterval=setInterval(function(){goToSlide(currentSlide+1);},5000);}
 function resetAutoSlide(){clearInterval(slideInterval);startAutoSlide();}
-function fmtPrice(v){return'\u09F3'+v.toLocaleString('en-BD');}
+
+/* ==========================================
+   UTILITY FUNCTIONS
+   ========================================== */
+function fmtPrice(val){return '\u09F3'+val.toLocaleString('en-BD');}
 function showToast(msg){
-  var t=document.getElementById('toast');document.getElementById('toastMsg').textContent=msg;t.classList.add('show');clearTimeout(t._timer);t._timer=setTimeout(function(){t.classList.remove('show');},3000);}
+  var t=document.getElementById('toast');
+  document.getElementById('toastMsg').textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(function(){t.classList.remove('show');},3000);
+}
+
+/* ==========================================
+   PRODUCT CARD & GRID RENDERING
+   ========================================== */
+function productCardHTML(p){
+  var liked=wishlist.has(p.id);
+  var tagHTML='';
+  if(!p.inStock)tagHTML='<div class="p-oos-tag">Out of Stock</div>';
+  else if(p.tag)tagHTML='<div class="p-tag">'+p.tag+'</div>';
+  return '<div class="p-card" onclick="openPM('+p.id+')"><div class="p-img"><img src="'+p.image+'" alt="'+p.name+'" loading="lazy" onerror="this.src=\'https://via.placeholder.com/400x500/121212/d4a017?text=Image\'">'+tagHTML+'<button class="wl-btn'+(liked?' liked':'')+'" onclick="event.stopPropagation();toggleWL('+p.id+')"><i class="fas fa-heart"></i></button></div><div class="p-details"><h4>'+p.name+'</h4><div class="p-price"><span class="cur">'+fmtPrice(p.price)+'</span>'+(p.oldPrice?'<span class="old">'+fmtPrice(p.oldPrice)+'</span>':'')+'</div><button class="qv-btn'+(p.inStock?'':' oos')+'" onclick="event.stopPropagation();'+(p.inStock?'openPM('+p.id+')':'')+'">'+(p.inStock?'Order Now':'Sold Out')+'</button></div></div>';
+}
+function renderTrending(){
+  var grid=document.getElementById('trendGrid');
+  var items=products.slice().sort(function(a,b){if(a.inStock===b.inStock)return 0;return a.inStock?-1:1;}).slice(0,8);
+  grid.innerHTML=items.length?items.map(productCardHTML).join(''):'<div class="no-products"><i class="fas fa-box-open"></i>No products available yet</div>';
+}
+function initCategoryPage(page,gridId,countId,filterId,subFilter){_activeSubFilter=subFilter||'';_activeSizes=[];buildFilterSidebar(filterId,page,subFilter);renderCategoryGrid(page,gridId,countId);}
+function renderCategoryGrid(page,gridId,countId){var filtered=getFilteredProducts(page);document.getElementById(countId).textContent=filtered.length+' products found';var grid=document.getElementById(gridId);grid.innerHTML=filtered.length?filtered.map(productCardHTML).join(''):'<div class="no-products"><i class="fas fa-box-open"></i>No products available yet</div>';}
+function getFilteredProducts(page){
+  var list=[];
+  if(page==='men')list=products.filter(function(p){return p.category==='men';});
+  else if(page==='women')list=products.filter(function(p){return p.category==='women';});
+  else if(page==='accessories')list=products.filter(function(p){return ['watch','bag','perfume','jewelry','sunglasses','homedecor'].indexOf(p.category)!==-1;});
+  else if(page==='offer')list=products.filter(function(p){return p.oldPrice>0;});
+  if(_activeSubFilter){list=list.filter(function(p){return p.category===_activeSubFilter;});}
+  var rangeInput=document.querySelector('#'+currentPageInfo.filterId+' .price-range-wrap input[type="range"]');
+  var maxPrice=rangeInput?parseInt(rangeInput.value):99999;
+  list=list.filter(function(p){return p.price<=maxPrice;});
+  if(_activeSizes.length){list=list.filter(function(p){return p.sizes.some(function(s){return _activeSizes.indexOf(s)!==-1;});});}
+  list.sort(function(a,b){if(a.inStock===b.inStock)return 0;return a.inStock?-1:1;});
+  return list;
+}
+function buildFilterSidebar(filterId,page,subFilter){
+  var el=document.getElementById(filterId);if(!el)return;
+  var baseList=[];
+  if(page==='men')baseList=products.filter(function(p){return p.category==='men';});
+  else if(page==='women')baseList=products.filter(function(p){return p.category==='women';});
+  else if(page==='accessories'){
+    if(subFilter)baseList=products.filter(function(p){return p.category===subFilter;});
+    else baseList=products.filter(function(p){return ['watch','bag','perfume','jewelry','sunglasses','homedecor'].indexOf(p.category)!==-1;});
+  }
+  else if(page==='offer')baseList=products.filter(function(p){return p.oldPrice>0;});
+  var allSizes=[];
+  baseList.forEach(function(p){p.sizes.forEach(function(s){if(allSizes.indexOf(s)===-1)allSizes.push(s);});});
+  var maxP=baseList.length?Math.max.apply(null,baseList.map(function(p){return p.price;})):100;
+  var html='';
+  if(page==='men'||page==='women'){
+    var cats=SUB_CATS[page]||[];
+    html+='<div class="filter-group"><h4>Category</h4><div class="filter-sub-btns">';
+    cats.forEach(function(cat){var label=SUB_CAT_LABELS[cat]||cat;var isActive=_activeSubFilter===cat?' active':'';html+='<button class="fsub-btn'+isActive+'" onclick="toggleSubFilter(\''+cat+'\')"><i class="fas fa-check"></i>'+label+'</button>';});
+    html+='</div></div>';
+  }
+  html+='<div class="filter-group"><h4>Price Range</h4><div class="price-range-wrap"><input type="range" min="0" max="'+maxP+'" value="'+maxP+'" id="priceRangeSlider" oninput="onPriceRangeChange(this)"><div class="price-range-val" id="priceRangeVal">Up to '+fmtPrice(maxP)+'</div></div></div>';
+  if(allSizes.length){
+    html+='<div class="filter-group"><h4>Size</h4><div class="filter-size-btns">';
+    allSizes.forEach(function(s){var isActive=_activeSizes.indexOf(s)!==-1?' active':'';html+='<button class="fsize-btn'+isActive+'" onclick="toggleSizeFilter(this,\''+s+'\')">'+s+'</button>';});
+    html+='</div></div>';
+  }
+  html+='<button class="clear-filter-btn" onclick="clearFilters()">Clear Filters</button>';
+  el.innerHTML=html;
+}
+function toggleSubFilter(cat){if(_activeSubFilter===cat)_activeSubFilter='';else _activeSubFilter=cat;var pi=currentPageInfo;buildFilterSidebar(pi.filterId,pi.page,pi.subFilter);renderCategoryGrid(pi.page,pi.gridId,pi.countId);}
+function toggleSizeFilter(el,size){el.classList.toggle('active');var idx=_activeSizes.indexOf(size);if(idx===-1)_activeSizes.push(size);else _activeSizes.splice(idx,1);reRenderPage();}
+function onPriceRangeChange(input){document.getElementById('priceRangeVal').textContent='Up to '+fmtPrice(parseInt(input.value));reRenderPage();}
+function reRenderPage(){var pi=currentPageInfo;if(!pi.gridId)return;renderCategoryGrid(pi.page,pi.gridId,pi.countId);}
+function clearFilters(){_activeSubFilter='';_activeSizes=[];var pi=currentPageInfo;buildFilterSidebar(pi.filterId,pi.page,pi.subFilter);renderCategoryGrid(pi.page,pi.gridId,pi.countId);}
+
+/* ==========================================
+   WISHLIST
+   ========================================== */
+function toggleWL(id){
+  if(wishlist.has(id))wishlist.delete(id);else wishlist.add(id);
+  showToast(wishlist.has(id)?'Added to wishlist':'Removed from wishlist');
+  updateWLBadge();
+  var pi=currentPageInfo;
+  if(pi.page==='home')renderTrending();else reRenderPage();
+}
+function updateWLBadge(){document.getElementById('wlBadge').textContent=wishlist.size;}
+function openWishlist(){document.getElementById('wlOv').classList.add('active');document.getElementById('wlSb').classList.add('active');document.body.style.overflow='hidden';renderWishlist();}
+function closeWishlist(){document.getElementById('wlOv').classList.remove('active');document.getElementById('wlSb').classList.remove('active');document.body.style.overflow='';}
+function renderWishlist(){
+  var el=document.getElementById('wlItems');
+  var wlProducts=products.filter(function(p){return wishlist.has(p.id);});
+  if(!wlProducts.length){el.innerHTML='<div class="cart-empty"><i class="fas fa-heart"></i><p>Your wishlist is empty</p></div>';return;}
+  el.innerHTML=wlProducts.map(function(p){
+    return '<div class="cart-item"><div class="cart-item-img" onclick="closeWishlist();openPM('+p.id+')" style="cursor:pointer"><img src="'+p.image+'" alt="'+p.name+'"></div><div class="cart-item-info"><h4 style="cursor:pointer" onclick="closeWishlist();openPM('+p.id+')">'+p.name+'</h4><div class="cart-item-price">'+fmtPrice(p.price)+'</div><div class="wl-item-actions">'+(p.inStock?'<button class="wl-action-btn wl-add-cart" onclick="wlAddToCart('+p.id+')">Add to Cart</button>':'')+'<button class="wl-action-btn wl-remove" onclick="toggleWL('+p.id+');renderWishlist()">Remove</button></div></div></div>';
+  }).join('');
+}
+function wlAddToCart(id){
+  var p=products.find(function(x){return x.id===id;});if(!p)return;
+  var color=p.colors.length?p.colors[0]:'';var size=p.sizes.length?p.sizes[0]:'';
+  addToCart(p,color,size,1);renderWishlist();
+}
+
+/* ==========================================
+   CART
+   ========================================== */
+function addToCart(product,color,size,qty){
+  var key=product.id+'_'+color+'_'+size;
+  var existing=cart.find(function(c){return c.key===key;});
+  if(existing){existing.qty+=qty;}
+  else{cart.push({key:key,id:product.id,name:product.name,image:product.image,price:product.price,color:color,size:size,qty:qty});}
+  updateCartBadge();showToast('Added to cart');
+}
+function updateCartBadge(){document.getElementById('cartBadge').textContent=cart.reduce(function(s,c){return s+c.qty;},0);}
+function openCart(){document.getElementById('cartOv').classList.add('active');document.getElementById('cartSb').classList.add('active');document.body.style.overflow='hidden';renderCart();}
+function closeCart(){document.getElementById('cartOv').classList.remove('active');document.getElementById('cartSb').classList.remove('active');document.body.style.overflow='';}
+function renderCart(){
+  var el=document.getElementById('cartItems');
+  if(!cart.length){el.innerHTML='<div class="cart-empty"><i class="fas fa-shopping-bag"></i><p>Your cart is empty</p></div>';document.getElementById('cartTotal').textContent=fmtPrice(0);return;}
+  var total=0;
+  el.innerHTML=cart.map(function(c,i){
+    var subtotal=c.price*c.qty;total+=subtotal;
+    var colorDot=c.color?'<span class="cart-item-color"><span class="dot" style="background:'+c.color+'"></span></span>':'';
+    var sizeTxt=c.size?'<span class="cart-item-size">Size: '+c.size+'</span>':'';
+    return '<div class="cart-item"><div class="cart-item-img"><img src="'+c.image+'" alt="'+c.name+'"></div><div class="cart-item-info"><h4>'+c.name+'</h4><div class="cart-item-meta">'+colorDot+sizeTxt+'</div><div class="cart-item-qty"><button onclick="changeCartQty('+i+',-1)"><i class="fas fa-minus"></i></button><span>'+c.qty+'</span><button onclick="changeCartQty('+i+',1)"><i class="fas fa-plus"></i></button></div><div class="cart-item-price">'+fmtPrice(subtotal)+'</div></div><button class="cart-item-remove" onclick="removeCartItem('+i+')"><i class="fas fa-trash"></i></button></div>';
+  }).join('');
+  document.getElementById('cartTotal').textContent=fmtPrice(total);
+}
+function changeCartQty(idx,dir){
+  if(!cart[idx])return;
+  cart[idx].qty+=dir;
+  if(cart[idx].qty<=0)cart.splice(idx,1);
+  updateCartBadge();renderCart();
+}
+function removeCartItem(idx){
+  cart.splice(idx,1);updateCartBadge();renderCart();showToast('Item removed from cart');
+}
+
+/* ==========================================
+   CHECKOUT
+   ========================================== */
+function openCheckout(){
+  closeCart();
+  if(!cart.length){showToast('Your cart is empty');return;}
+  if(!isLoggedIn()){
+    pendingCartAction=function(){openCheckout();};
+    openLogin();
+    showToast('Please login to checkout');
+    return;
+  }
+  var user=getLoggedUser();
+  document.getElementById('coName').value=user.name||'';
+  document.getElementById('coEmail').value=user.email||'';
+  document.getElementById('coPhone').value=user.phone||'';
+  document.getElementById('coAddress').value='';
+  document.getElementById('coNotes').value='';
+  document.getElementById('coPayMethod').value='cod';
+  document.getElementById('coTxnId').value='';
+  document.getElementById('coTxnField').style.display='none';
+  document.getElementById('coOv').classList.add('active');
+  document.getElementById('coModal').classList.add('active');
+  document.body.style.overflow='hidden';
+}
+function closeCheckout(){document.getElementById('coOv').classList.remove('active');document.getElementById('coModal').classList.remove('active');document.body.style.overflow='';}
+function toggleTxnField(){
+  var method=document.getElementById('coPayMethod').value;
+  document.getElementById('coTxnField').style.display=(method==='cod')?'none':'block';
+}
+function submitOrder(){
+  var name=document.getElementById('coName').value.trim();
+  var email=document.getElementById('coEmail').value.trim();
+  var phone=document.getElementById('coPhone').value.trim();
+  var address=document.getElementById('coAddress').value.trim();
+  var notes=document.getElementById('coNotes').value.trim();
+  var payMethod=document.getElementById('coPayMethod').value;
+  var txnId=document.getElementById('coTxnId').value.trim();
+  if(!name||!email||!phone||!address){showToast('Please fill in all required fields');return;}
+  if(payMethod!=='cod'&&!txnId){showToast('Please enter your transaction ID');return;}
+  var total=cart.reduce(function(s,c){return s+(c.price*c.qty);},0);
+  var order={
+    id:'FG-'+String(nextOrderId).padStart(4,'0'),
+    date:new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+    customer:{name:name,email:email,phone:phone,address:address,notes:notes},
+    items:cart.map(function(c){return{name:c.name,image:c.image,price:c.price,color:c.color,size:c.size,qty:c.qty};}),
+    total:total,
+    payMethod:payMethod,
+    txnId:payMethod!=='cod'?txnId:'',
+    paid:payMethod!=='cod',
+    status:'pending',
+    userId:auth.currentUser?auth.currentUser.uid:'guest'
+  };
+  orders.push(order);
+  nextOrderId++;
+  saveOrders();saveNextOrderId();
+  cart=[];updateCartBadge();
+  closeCheckout();
+  showToast('Order '+order.id+' placed successfully!');
+}
+
+/* ==========================================
+   SEARCH
+   ========================================== */
+function openSearch(){document.getElementById('searchOv').classList.add('active');document.body.style.overflow='hidden';document.getElementById('searchInput').value='';document.getElementById('searchResults').innerHTML='';setTimeout(function(){document.getElementById('searchInput').focus();},200);}
+function closeSearch(){document.getElementById('searchOv').classList.remove('active');document.body.style.overflow='';}
+function performSearch(q){
+  var el=document.getElementById('searchResults');
+  q=q.trim().toLowerCase();
+  if(!q){el.innerHTML='';return;}
+  var results=products.filter(function(p){return p.name.toLowerCase().indexOf(q)!==-1||(p.category&&p.category.toLowerCase().indexOf(q)!==-1)||(p.subCategory&&p.subCategory.toLowerCase().indexOf(q)!==-1);});
+  if(!results.length){el.innerHTML='<div class="search-no-result"><i class="fas fa-search"></i>No products found for "'+q+'"</div>';return;}
+  el.innerHTML='<div class="search-results-grid">'+results.map(productCardHTML).join('')+'</div>';
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSearch();closePM();closeCart();closeWishlist();closeLogin();closeCheckout();}});
+
+/* ==========================================
+   PRODUCT MODAL
+   ========================================== */
+function openPM(id){
+  var p=products.find(function(x){return x.id===id;});if(!p)return;
+  pmCurrentProduct=p;pmSelectedColor=p.colors.length?p.colors[0]:'';pmSelectedSize=p.sizes.length?p.sizes[0]:'';pmQuantity=1;
+  document.getElementById('pmImg').src=p.image;
+  document.getElementById('pmImg').onerror=function(){this.src='https://via.placeholder.com/400x500/121212/d4a017?text=Image';};
+  // Tag
+  var tagEl=document.getElementById('pmTag');
+  if(!p.inStock){tagEl.className='pm-oos-tag';tagEl.textContent='Out of Stock';}
+  else if(p.tag){tagEl.className='pm-tag';tagEl.textContent=p.tag;}
+  else{tagEl.className='pm-tag';tagEl.style.display='none';}
+  if(p.tag||!p.inStock)tagEl.style.display=''; 
+  document.getElementById('pmName').textContent=p.name;
+  document.getElementById('pmPrice').innerHTML='<span class="cur">'+fmtPrice(p.price)+'</span>'+(p.oldPrice?'<span class="old">'+fmtPrice(p.oldPrice)+'</span>':'');
+  // Colors
+  var colorsHtml='';
+  p.colors.forEach(function(c){
+    var isL=LIGHT_COLORS.indexOf(c)!==-1;
+    colorsHtml+='<div class="pm-cswatch'+(isL?' light-c':'')+(c===pmSelectedColor?' active':'')+'" style="background:'+c+'" onclick="selectPMColor(this,\''+c+'\')"></div>';
+  });
+  document.getElementById('pmColors').innerHTML=colorsHtml;
+  // Sizes
+  var sizesHtml='';
+  p.sizes.forEach(function(s){
+    sizesHtml+='<button class="pm-sbtn'+(s===pmSelectedSize?' active':'')+'" onclick="selectPMSize(this,\''+s+'\')">'+s+'</button>';
+  });
+  document.getElementById('pmSizes').innerHTML=sizesHtml;
+  // Qty
+  document.getElementById('pmQtyVal').textContent='1';
+  // Add button
+  var addBtn=document.getElementById('pmAddBtn');
+  if(!p.inStock){addBtn.textContent='OUT OF STOCK';addBtn.classList.add('oos');}
+  else{addBtn.textContent='ADD TO CART';addBtn.classList.remove('oos');}
+  document.getElementById('pmOv').classList.add('active');
+  document.getElementById('pmModal').classList.add('active');
+  document.body.style.overflow='hidden';
+}
+function closePM(){document.getElementById('pmOv').classList.remove('active');document.getElementById('pmModal').classList.remove('active');document.body.style.overflow='';}
+function selectPMColor(el,hex){
+  document.querySelectorAll('.pm-cswatch').forEach(function(s){s.classList.remove('active');});
+  el.classList.add('active');pmSelectedColor=hex;
+}
+function selectPMSize(el,size){
+  document.querySelectorAll('.pm-sbtn').forEach(function(s){s.classList.remove('active');});
+  el.classList.add('active');pmSelectedSize=size;
+}
+function pmQty(dir){
+  pmQuantity+=dir;if(pmQuantity<1)pmQuantity=1;if(pmQuantity>10)pmQuantity=10;
+  document.getElementById('pmQtyVal').textContent=pmQuantity;
+}
+function pmAddToCart(){
+  if(!pmCurrentProduct||!pmCurrentProduct.inStock)return;
+  addToCart(pmCurrentProduct,pmSelectedColor,pmSelectedSize,pmQuantity);
+  closePM();
+}
+
+/* ==========================================
+   NEWSLETTER
+   ========================================== */
+function subscribeNL(e){
+  e.preventDefault();
+  var input=e.target.querySelector('input');
+  var email=input.value.trim();
+  if(!email||!isValidEmail(email)){showToast('Please enter a valid email address');return false;}
+  input.value='';
+  showToast('Subscribed successfully! Check your email for 15% off code.');
+  return false;
+}
