@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FASHION GARAGE - Premium Fashion</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== STORE NAV ===== -->
+<nav class="main-nav" id="mainNav">
+  <div class="logo-ph" onclick="showPage('home')"><img src="JGT.png" alt="Fashion Garage"></div>
+  <div class="nav-center">
+    <a href="#" onclick="showPage('home');return false" class="active" data-nav="home">HOME</a>
+    <a href="#" onclick="showPage('men');return false" data-nav="men">MEN</a>
+    <a href="#" onclick="showPage('women');return false" data-nav="women">WOMEN</a>
+    <div class="nav-dd">
+      <a data-nav="accessories">ACCESSORIES <i class="fas fa-chevron-down"></i></a>
+      <div class="nav-dd-menu">
+        <a href="#" onclick="showPage('accessories','watch');return false"><i class="fas fa-clock"></i> Watches</a>
+        <a href="#" onclick="showPage('accessories','bag');return false"><i class="fas fa-bag-shopping"></i> Bags</a>
+        <a href="#" onclick="showPage('accessories','perfume');return false"><i class="fas fa-spray-can-sparkles"></i> Perfumes</a>
+        <a href="#" onclick="showPage('accessories','jewelry');return false"><i class="fas fa-gem"></i> Jewelry</a>
+        <a href="#" onclick="showPage('accessories','sunglasses');return false"><i class="fas fa-glasses"></i> Sunglasses</a>
+        <a href="#" onclick="showPage('accessories','homedecor');return false"><i class="fas fa-couch"></i> Home Decor</a>
+      </div>
+    </div>
+    <a href="#" onclick="showPage('home');setTimeout(()=>document.getElementById('trending')?.scrollIntoView({behavior:'smooth'}),100);return false">NEW ARRIVALS</a>
+    <a href="#" onclick="showPage('offer');return false" data-nav="sale">Offer's</a>
+    <a href="#" onclick="showPage('home');setTimeout(()=>document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'}),100);return false">CONTACT</a>
+  </div>
+  <div class="nav-right">
+    <button aria-label="Search" onclick="openSearch()"><i class="fas fa-search"></i></button>
+    <button aria-label="Wishlist" onclick="openWishlist()" id="wlNavBtn"><i class="fas fa-heart"></i><span class="cart-badge" id="wlBadge">0</span></button>
+    <button aria-label="Cart" onclick="openCart()"><i class="fas fa-shopping-bag"></i><span class="cart-badge" id="cartBadge">0</span></button>
+    <button aria-label="Account" onclick="handleUserClick()" id="userBtn"><i class="fas fa-user"></i></button>
+    <div class="mob-toggle" id="mobToggle"><span></span><span></span><span></span></div>
+  </div>
+</nav>
+
+<!-- Mobile Overlay -->
+<div class="mob-overlay" id="mobOverlay"></div>
+
+<!-- Mobile Nav -->
+<div class="mob-nav" id="mobNav">
+  <a href="#" onclick="showPage('home');closeMob();return false" class="active" data-mnav="home">HOME</a>
+  <a href="#" onclick="showPage('men');closeMob();return false" data-mnav="men">MEN</a>
+  <a href="#" onclick="showPage('women');closeMob();return false" data-mnav="women">WOMEN</a>
+  <a href="#" class="mob-acc-tog" id="mobAccTog" onclick="toggleMobAcc(event)">ACCESSORIES <i class="fas fa-chevron-down"></i></a>
+  <div class="mob-sub" id="mobSub">
+    <a href="#" onclick="showPage('accessories','watch');closeMob();return false">Watches</a>
+    <a href="#" onclick="showPage('accessories','bag');closeMob();return false">Bags</a>
+    <a href="#" onclick="showPage('accessories','perfume');closeMob();return false">Perfumes</a>
+    <a href="#" onclick="showPage('accessories','jewelry');closeMob();return false">Jewelry</a>
+    <a href="#" onclick="showPage('accessories','sunglasses');closeMob();return false">Sunglasses</a>
+    <a href="#" onclick="showPage('accessories','homedecor');closeMob();return false">Home Decor</a>
+  </div>
+  <a href="#" onclick="showPage('offer');closeMob();return false">Offer's</a>
+  <div class="mob-nav-icons">
+    <a href="#" onclick="openSearch();closeMob();return false"><i class="fas fa-search"></i></a>
+    <a href="#" onclick="openWishlist();closeMob();return false"><i class="fas fa-heart"></i></a>
+    <a href="#" onclick="openCart();closeMob();return false"><i class="fas fa-shopping-bag"></i></a>
+    <a href="#" onclick="handleUserClick();closeMob();return false"><i class="fas fa-user"></i></a>
+  </div>
+</div>
+
+<!-- ===== STORE CONTENT WRAPPER ===== -->
+<div id="storeWrapper">
+
+<!-- ===== HOME PAGE ===== -->
+<div id="homePage" class="page-sec active">
+  <div class="hero-slider">
+    <div class="hero-track" id="heroTrack">
+      <div class="hero-slide">
+        <div class="hero-content">
+          <div class="hero-text">
+            <div class="hero-label">New Season 2025</div>
+            <h1 class="hero-h1"><span class="wt">Style For</span><span class="gt">Everyone</span></h1>
+            <p class="hero-sub">Discover the latest trends in luxury fashion. Crafted for those who demand excellence.</p>
+            <button class="hero-btn" onclick="showPage('men')">Shop Now</button>
+          </div>
+          <div class="hero-models">
+            <div class="hero-circle"></div>
+            <div class="hero-m"><img src="M11.png" alt="Model"></div>
+            <div class="hero-f"><img src="F11.png" alt="Model"></div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-slide">
+        <div class="hero-content">
+          <div class="hero-text">
+            <div class="hero-label">Exclusive</div>
+            <h1 class="hero-h1"><span class="wt">Premium</span><span class="gt">Collection's</span></h1>
+            <p class="hero-sub">Handcrafted pieces that define your unique style.</p>
+            <button class="hero-btn" onclick="showPage('women')">Explore Now</button>
+          </div>
+          <div class="hero-models" style="margin-left:20%">
+            <div class="hero-circle"></div>
+            <div class="hero-m"><img src="fm2.png" alt="Model"></div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-slide">
+        <div class="hero-content">
+          <div class="hero-text">
+            <div class="hero-label">Don't Miss Out</div>
+            <h1 class="hero-h1"><span class="wt">Grap Your</span><span class="gt">Sale</span></h1>
+            <p class="hero-sub">Up to 50% off on selected items. Now Your Choice.</p>
+            <button class="hero-btn" onclick="showPage('offer')">View Sale</button>
+          </div>
+          <div class="hero-models">
+            <div class="hero-circle"></div>
+            <div class="hero-m"><img src="Pr1.png" alt="Model"></div>
+            <div class="hero-f"><img src="SF1.png" alt="Model"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="s-arrow s-prev" onclick="heroSlide(-1)"><i class="fas fa-chevron-left"></i></button>
+    <button class="s-arrow s-next" onclick="heroSlide(1)"><i class="fas fa-chevron-right"></i></button>
+    <div class="s-dots" id="heroDots"></div>
+  </div>
+
+  <div class="features-strip fade-in">
+    <div class="features-grid">
+      <div class="feat-item"><div class="feat-icon"><i class="fas fa-truck-fast"></i></div><div class="feat-text"><h4>Free Shipping</h4><p>On orders over ৳5000</p></div></div>
+      <div class="feat-item"><div class="feat-icon"><i class="fas fa-shield-halved"></i></div><div class="feat-text"><h4>Secure Payment</h4><p>100% secure checkout</p></div></div>
+      <div class="feat-item"><div class="feat-icon"><i class="fas fa-rotate-left"></i></div><div class="feat-text"><h4>Easy Returns</h4><p>30-day return policy</p></div></div>
+      <div class="feat-item"><div class="feat-icon"><i class="fas fa-headset"></i></div><div class="feat-text"><h4>24/7 Support</h4><p>Dedicated support team</p></div></div>
+    </div>
+  </div>
+
+  <div class="cat-section fade-in">
+    <div class="sec-header"><h2>Shop By Category</h2><div class="gold-line"></div></div>
+    <div class="cat-grid">
+      <div class="cat-card" onclick="showPage('men')"><div class="cat-img"><img src="S1.png" alt="Men"></div><div class="cat-info"><h3>Men's Fashion</h3><p class="cat-sub">Premium Collection</p><button class="cat-btn">Explore</button></div></div>
+      <div class="cat-card" onclick="showPage('women')"><div class="cat-img"><img src="S2.png" alt="Women" style="object-position:-1% center"></div><div class="cat-info"><h3>Women's Fashion</h3><p class="cat-sub">Elegant Styles</p><button class="cat-btn">Explore</button></div></div>
+      <div class="cat-card" onclick="showPage('accessories')"><div class="cat-img"><img src="A1.png" alt="Accessories" style="height:100%"></div><div class="cat-info"><h3>Accessories</h3><p class="cat-sub">Complete Your Look</p><button class="cat-btn">Shop Now</button></div></div>
+      <div class="cat-card" onclick="showPage('offer')"><div class="cat-img"><img src="Sale.png" alt="Sale" style="height:100%"></div><div class="sale-badge">SALE</div><div class="cat-info"><h3>Special Offers</h3><p class="cat-sub">Up to 50% Off</p><button class="cat-btn">View Deals</button></div></div>
+    </div>
+  </div>
+
+  <div class="trend-section fade-in" id="trending">
+    <div class="sec-header"><h2>New Arrivals</h2><div class="gold-line"></div></div>
+    <div class="trend-grid" id="trendGrid"></div>
+  </div>
+
+  <div class="cta-banner fade-in">
+    <div class="cta-content">
+      <h2>Join The <span>Fashion</span> Revolution</h2>
+      <p>Subscribe to our newsletter and get 15% off your first order. Stay ahead of the trends.</p>
+      <button class="hero-btn" onclick="document.querySelector('.nl-section').scrollIntoView({behavior:'smooth'})">Subscribe Now</button>
+    </div>
+  </div>
+
+  <div class="nl-section">
+    <div class="nl-inner">
+      <h3>Stay Updated</h3>
+      <p>Get the latest news, offers and style tips delivered to your inbox.</p>
+      <form class="nl-form" onsubmit="return subscribeNL(event)">
+        <input type="email" placeholder="Enter your email address" required>
+        <button type="submit">Subscribe</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="contact-sec" id="contactSection">
+    <div class="contact-grid">
+      <div class="contact-card"><i class="fas fa-location-dot"></i><h4>Visit Us</h4><p>123 Fashion Avenue<br>New York, NY 10001</p></div>
+      <div class="contact-card"><i class="fas fa-phone"></i><h4>Call Us</h4><p>+1 (555) 123-4567<br>Mon - Sat, 9AM - 9PM</p></div>
+      <div class="contact-card"><i class="fas fa-envelope"></i><h4>Email Us</h4><p>info@fashiongarage.com<br>support@fashiongarage.com</p></div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4>Fashion Garage</h4>
+        <p>Your destination for premium fashion. We curate the finest collections from renowned designers to bring you unparalleled style and quality.</p>
+        <div class="footer-social">
+          <a href="#"><i class="fab fa-facebook-f"></i></a>
+          <a href="#"><i class="fab fa-instagram"></i></a>
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-pinterest-p"></i></a>
+        </div>
+      </div>
+      <div class="footer-col"><h4>Quick Links</h4><ul><li><a href="#" onclick="showPage('men');return false">Men's Collection</a></li><li><a href="#" onclick="showPage('women');return false">Women's Collection</a></li><li><a href="#" onclick="showPage('accessories');return false">Accessories</a></li><li><a href="#" onclick="showPage('offer');return false">Sale Items</a></li></ul></div>
+      <div class="footer-col"><h4>Customer Service</h4><ul><li><a href="#">Shipping Info</a></li><li><a href="#">Returns & Exchanges</a></li><li><a href="#">Size Guide</a></li><li><a href="#">FAQ</a></li></ul></div>
+      <div class="footer-col"><h4>Contact Info</h4><ul><li><a href="#">123 Fashion Avenue, NY</a></li><li><a href="#">+1 (555) 123-4567</a></li><li><a href="#">info@fashiongarage.com</a></li></ul></div>
+    </div>
+    <div class="footer-bottom"><p>&copy; 2025 <span>Fashion Garage</span>. All Rights Reserved.</p></div>
+  </footer>
+</div>
+
+<!-- ===== MEN PAGE ===== -->
+<div id="menPage" class="page-sec">
+  <div class="cat-page">
+    <div class="breadcrumb"><a href="#" onclick="showPage('home');return false">Home</a><span class="sep">/</span><span class="current">Men</span></div>
+    <h2 class="cat-page-title">Men's Collection</h2>
+    <p class="cat-page-count" id="menCount"></p>
+    <div class="cat-page-layout"><aside class="filter-sidebar" id="menFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="menGrid"></div></div></div>
+  </div>
+</div>
+
+<!-- ===== WOMEN PAGE ===== -->
+<div id="womenPage" class="page-sec">
+  <div class="cat-page">
+    <div class="breadcrumb"><a href="#" onclick="showPage('home');return false">Home</a><span class="sep">/</span><span class="current">Women</span></div>
+    <h2 class="cat-page-title">Women's Collection</h2>
+    <p class="cat-page-count" id="womenCount"></p>
+    <div class="cat-page-layout"><aside class="filter-sidebar" id="womenFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="womenGrid"></div></div></div>
+  </div>
+</div>
+
+<!-- ===== ACCESSORIES PAGE ===== -->
+<div id="accPage" class="page-sec">
+  <div class="cat-page">
+    <div class="breadcrumb"><a href="#" onclick="showPage('home');return false">Home</a><span class="sep">/</span><span class="current" id="accBreadcrumb">Accessories</span></div>
+    <h2 class="cat-page-title" id="accTitle">Accessories</h2>
+    <p class="cat-page-count" id="accCount"></p>
+    <div class="cat-page-layout"><aside class="filter-sidebar" id="accFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="accGrid"></div></div></div>
+  </div>
+</div>
+
+<!-- ===== OFFER PAGE ===== -->
+<div id="offerPage" class="page-sec">
+  <div class="cat-page">
+    <div class="breadcrumb"><a href="#" onclick="showPage('home');return false">Home</a><span class="sep">/</span><span class="current">Sale</span></div>
+    <h2 class="cat-page-title">Special Offers</h2>
+    <p class="cat-page-count" id="offerCount"></p>
+    <div class="cat-page-layout"><aside class="filter-sidebar" id="offerFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="offerGrid"></div></div></div>
+  </div>
+</div>
+
+</div><!-- end storeWrapper -->
+
+<!-- ===== SEARCH OVERLAY ===== -->
+<div class="search-ov" id="searchOv">
+  <button class="search-close" onclick="closeSearch()"><i class="fas fa-times"></i></button>
+  <div class="search-title">Search Products</div>
+  <div class="search-wrap"><input type="text" id="searchInput" placeholder="Type to search..." oninput="performSearch(this.value)"><i class="fas fa-search"></i></div>
+  <div class="search-results" id="searchResults"></div>
+</div>
+
+<!-- ===== PRODUCT MODAL ===== -->
+<div class="pm-ov" id="pmOv" onclick="if(event.target===this)closePM()"></div>
+<div class="pm" id="pmModal">
+  <button class="pm-close" onclick="closePM()"><i class="fas fa-times"></i></button>
+  <div class="pm-inner">
+    <div class="pm-image"><img id="pmImg" src="" alt="Product"></div>
+    <div class="pm-details">
+      <div id="pmTag"></div>
+      <h3 class="pm-name" id="pmName"></h3>
+      <div class="pm-price" id="pmPrice"></div>
+      <p class="pm-label">Color</p>
+      <div class="pm-colors" id="pmColors"></div>
+      <p class="pm-label">Size</p>
+      <div class="pm-sizes" id="pmSizes"></div>
+      <p class="pm-label">Quantity</p>
+      <div class="pm-qty">
+        <button onclick="pmQty(-1)"><i class="fas fa-minus"></i></button>
+        <span id="pmQtyVal">1</span>
+        <button onclick="pmQty(1)"><i class="fas fa-plus"></i></button>
+      </div>
+      <button class="pm-add" id="pmAddBtn" onclick="pmAddToCart()">Add to Cart</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CART SIDEBAR ===== -->
+<div class="cart-ov" id="cartOv" onclick="closeCart()"></div>
+<div class="cart-sb" id="cartSb">
+  <div class="cart-hdr"><h3>Shopping Bag</h3><button class="cart-close" onclick="closeCart()"><i class="fas fa-times"></i></button></div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="cart-footer"><div class="cart-total"><span>Total</span><strong id="cartTotal">৳0</strong></div><button class="cart-checkout" onclick="openCheckout()">Proceed to Checkout</button></div>
+</div>
+
+<!-- ===== WISHLIST SIDEBAR ===== -->
+<div class="wl-ov" id="wlOv" onclick="closeWishlist()"></div>
+<div class="wl-sb" id="wlSb">
+  <div class="cart-hdr"><h3><i class="fas fa-heart" style="color:var(--gold);margin-right:8px;font-size:13px"></i>Wishlist</h3><button class="cart-close" onclick="closeWishlist()"><i class="fas fa-times"></i></button></div>
+  <div class="cart-items" id="wlItems"></div>
+</div>
+
+<!-- ===== LOGIN MODAL ===== -->
+<div class="login-ov" id="loginOv" onclick="if(event.target===this)closeLogin()"></div>
+<div class="login-modal" id="loginModal">
+  <div class="co-hdr"><h3 id="loginTitle">Login</h3><button class="co-close" onclick="closeLogin()"><i class="fas fa-times"></i></button></div>
+  <div class="co-body">
+
+    <!-- LOGIN FORM -->
+    <div id="loginFormDiv">
+      <button class="google-btn" onclick="googleSignIn()">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continue with Google
+      </button>
+      <div class="social-divider"><span>OR</span></div>
+      <div class="co-field"><label>Email</label><input type="email" id="loginEmail" placeholder="your@email.com"></div>
+      <div class="co-field"><label>Password</label><div class="pass-wrap"><input type="password" id="loginPass" placeholder="Enter your password"><button type="button" class="pass-toggle" onclick="togglePassVis('loginPass',this)"><i class="fas fa-eye"></i></button></div></div>
+      <div class="login-error" id="loginError"></div>
+      <button class="co-submit" onclick="doLogin()">Login</button>
+      <div class="login-bottom-links"><a href="#" onclick="showForgotForm();return false">Forgot Password?</a></div>
+      <p class="login-switch">New here? <a href="#" onclick="showRegForm();return false">Create Account</a></p>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="regFormDiv" style="display:none">
+      <button class="google-btn" onclick="googleSignIn()">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Sign up with Google
+      </button>
+      <div class="social-divider"><span>OR</span></div>
+      <div class="co-field"><label>Full Name</label><input type="text" id="regName" placeholder="Your full name"></div>
+      <div class="co-field"><label>Email</label><input type="email" id="regEmail" placeholder="your@email.com"></div>
+      <div class="co-field"><label>Phone</label><input type="tel" id="regPhone" placeholder="01XXXXXXXXX"></div>
+      <div class="co-field"><label>Password</label><div class="pass-wrap"><input type="password" id="regPass" placeholder="Min 6 characters"><button type="button" class="pass-toggle" onclick="togglePassVis('regPass',this)"><i class="fas fa-eye"></i></button></div></div>
+      <div class="login-error" id="regError"></div>
+      <button class="co-submit" onclick="doRegister()">Create Account</button>
+      <p class="login-switch">Already have an account? <a href="#" onclick="showLogForm();return false">Login</a></p>
+    </div>
+
+    <!-- FORGOT PASSWORD FORM -->
+    <div id="forgotFormDiv" style="display:none">
+      <div style="text-align:center;margin-bottom:20px">
+        <i class="fas fa-envelope-open-text" style="font-size:40px;color:var(--gold);margin-bottom:12px;display:block"></i>
+        <p style="color:var(--lg);font-size:13px;line-height:1.7">Enter your email address and we'll send you a link to reset your password.</p>
+      </div>
+      <div class="co-field"><label>Email Address</label><input type="email" id="forgotEmail" placeholder="your@email.com"></div>
+      <div class="login-error" id="forgotError"></div>
+      <div class="login-success" id="forgotSuccess"></div>
+      <button class="co-submit" onclick="doForgotPassword()">Send Reset Link</button>
+      <p class="login-switch"><a href="#" onclick="showLogForm();return false"><i class="fas fa-arrow-left" style="margin-right:6px"></i>Back to Login</a></p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== CHECKOUT MODAL ===== -->
+<div class="co-ov" id="coOv" onclick="if(event.target===this)closeCheckout()"></div>
+<div class="co-modal" id="coModal">
+  <div class="co-hdr"><h3>Checkout</h3><button class="co-close" onclick="closeCheckout()"><i class="fas fa-times"></i></button></div>
+  <div class="co-body">
+    <div class="co-field"><label>Full Name *</label><input type="text" id="coName" placeholder="Your full name" required></div>
+    <div class="co-field"><label>Email *</label><input type="email" id="coEmail" placeholder="your@email.com" required></div>
+    <div class="co-field"><label>Phone *</label><input type="tel" id="coPhone" placeholder="+880 1XXX-XXXXXX" required></div>
+    <div class="co-field"><label>Address *</label><textarea id="coAddress" placeholder="Full shipping address" required></textarea></div>
+    <div class="co-field"><label>Notes (Optional)</label><textarea id="coNotes" placeholder="Special instructions"></textarea></div>
+    <div class="co-field"><label>Payment Method</label>
+      <select id="coPayMethod" onchange="toggleTxnField()">
+        <option value="cod">Cash on Delivery</option>
+        <option value="bkash">bKash</option>
+        <option value="nagad">Nagad</option>
+      </select>
+    </div>
+    <div class="co-field" id="coTxnField" style="display:none">
+      <label>Transaction ID *</label>
+      <input type="text" id="coTxnId" placeholder="Enter your transaction ID">
+    </div>
+    <button class="co-submit" onclick="submitOrder()">Place Order</button>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- ===== ADMIN PANEL ===== -->
+<!-- ========================================== -->
+
+<!-- Admin Login -->
+<div class="admin-login-ov" id="adminLoginOv" style="display:none">
+  <div class="admin-login-card">
+    <div class="admin-login-logo"><img src="JGT.png" alt="Admin"></div>
+    <h3>Admin Panel</h3>
+    <p>Enter your credentials to continue</p>
+    <div class="admin-login-field"><label>Username</label><input type="text" id="adminUser" placeholder="Enter username" autocomplete="off"></div>
+    <div class="admin-login-field"><label>Password</label><input type="password" id="adminPass" placeholder="Enter password"></div>
+    <div class="admin-login-error" id="adminLoginError"></div>
+    <button class="admin-login-btn" onclick="adminDoLogin()"><i class="fas fa-sign-in-alt"></i> Login</button>
+    <button class="admin-back-btn" onclick="adminGoBack()"><i class="fas fa-arrow-left"></i> Back to Store</button>
+  </div>
+</div>
+
+<!-- Admin Panel -->
+<div class="admin-panel" id="adminPanel" style="display:none">
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="admin-sidebar-hdr"><img src="JGT.png" alt="FG"><span>Admin Panel</span></div>
+    <nav class="admin-snav">
+      <a class="active" data-asec="dashboard" onclick="adminShowSec('dashboard')"><i class="fas fa-th-large"></i><span>Dashboard</span></a>
+      <a data-asec="products" onclick="adminShowSec('products')"><i class="fas fa-box"></i><span>Products</span></a>
+      <a data-asec="orders" onclick="adminShowSec('orders')"><i class="fas fa-receipt"></i><span>Orders</span></a>
+      <a data-asec="settings" onclick="adminShowSec('settings')"><i class="fas fa-cog"></i><span>Settings</span></a>
+    </nav>
+    <div class="admin-sidebar-ftr">
+      <a onclick="adminGoBack()"><i class="fas fa-store"></i><span>View Store</span></a>
+      <a onclick="adminDoLogout()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+    </div>
+  </aside>
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <button class="admin-mob-menu" id="adminMobMenu" onclick="toggleAdminSidebar()"><i class="fas fa-bars"></i></button>
+      <h2 id="adminPageTitle">Dashboard</h2>
+      <div class="admin-topbar-r"><i class="fas fa-user-shield"></i> <span id="adminUserDisp">Admin</span></div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="admin-sec active" id="admDashboard"></div>
+
+    <!-- Products -->
+    <div class="admin-sec" id="admProducts"></div>
+
+    <!-- Orders -->
+    <div class="admin-sec" id="admOrders"></div>
+
+    <!-- Settings -->
+    <div class="admin-sec" id="admSettings"></div>
+  </main>
+</div>
+
+<!-- Admin Product Modal -->
+<div class="admin-modal-ov" id="admModalOv" onclick="if(event.target===this)closeAdmModal()"></div>
+<div class="admin-modal" id="admProductModal">
+  <div class="admin-modal-hdr"><h3 id="admModalTitle">Add Product</h3><button onclick="closeAdmModal()"><i class="fas fa-times"></i></button></div>
+  <div class="admin-modal-body" id="admModalBody"></div>
+</div>
+
+<!-- Admin Order Modal -->
+<div class="admin-modal-ov" id="admOrderOv" onclick="if(event.target===this)closeAdmOrderModal()"></div>
+<div class="admin-modal admin-modal-lg" id="admOrderModal">
+  <div class="admin-modal-hdr"><h3>Order Details</h3><button onclick="closeAdmOrderModal()"><i class="fas fa-times"></i></button></div>
+  <div class="admin-modal-body" id="admOrderBody"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMsg"></span></div>
+
+<!-- Scroll To Top -->
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="fas fa-chevron-up"></i></button>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+<script src="script.js"></script>
+  
+</script>
+</body>
+</html>
