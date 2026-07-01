@@ -519,7 +519,7 @@ function productCard(p) {
   var l = wishlist.has(p.id), h = '<div class="p-card" onclick="openPM(' + p.id + ')"><div class="p-img"><img src="' + p.image + '" alt="' + escHtml(p.name) + '" onerror="this.src=\'https://via.placeholder.com/400x500/121212/d4a017?text=No+Image\'"><button class="wl-btn' + (l ? ' liked' : '') + '" onclick="event.stopPropagation();toggleWishlist(' + p.id + ')"><i class="' + (l ? 'fas' : 'far') + ' fa-heart"></i></button>';
   if (p.tag) h += '<div class="p-tag">' + p.tag + '</div>'; if (!p.inStock) h += '<div class="p-oos-tag">Out of Stock</div>';
   h += '</div><div class="p-details"><h4>' + escHtml(p.name) + '</h4><div class="p-price"><span class="cur">' + fmtPrice(p.price) + '</span>'; if (p.oldPrice) h += '<span class="old">' + fmtPrice(p.oldPrice) + '</span>';
-  h += '</div><button class="qv-btn' + (!p.inStock ? ' oos' : '') + '" onclick="event.stopPropagation();openPM(' + p.id + ')">' + (!p.inStock ? 'Out of Stock' : 'Quick View') + '</button></div></div>'; return h;
+  h += '</div><button class="qv-btn' + (!p.inStock ? ' oos' : '') + '" onclick="event.stopPropagation();openPM(' + p.id + ')">' + (!p.inStock ? 'Out of Stock' : 'ORDER NOW') + '</button></div></div>'; return h;
 }
 function renderTrending() { var g = document.getElementById('trendGrid'); if (!products.length) { g.innerHTML = '<div class="no-products"><i class="fas fa-box-open"></i><br>No products yet</div>'; return; } g.innerHTML = products.slice().sort(function (a, b) { return b.id - a.id; }).slice(0, 8).map(function (p) { return productCard(p); }).join(''); initFadeIn(); }
 
