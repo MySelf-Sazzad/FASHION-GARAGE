@@ -853,7 +853,7 @@ function productCard(p) {
   if (!p.inStock) h += '<div class="p-oos-tag">Out of Stock</div>';
   h += '</div><div class="p-details"><h4>' + escHtml(p.name) + '</h4><div class="p-price"><span class="cur">' + fmtPrice(p.price) + '</span>';
   if (p.oldPrice) h += '<span class="old">' + fmtPrice(p.oldPrice) + '</span>';
-  h += '</div><button class="qv-btn' + (!p.inStock ? ' oos' : '') + '" onclick="event.stopPropagation();openPM(' + p.id + ')">' + (!p.inStock ? 'Out of Stock' : 'Quick View') + '</button></div></div>';
+  h += '</div><button class="qv-btn' + (!p.inStock ? ' oos' : '') + '" onclick="event.stopPropagation();openPM(' + p.id + ')">' + (!p.inStock ? 'Out of Stock' : 'ORDER NOW') + '</button></div></div>';
   return h;
 }
 
