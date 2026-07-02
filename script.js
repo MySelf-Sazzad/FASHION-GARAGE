@@ -186,20 +186,7 @@ function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
    LOGIN UI
    ========================================== */
 function openLogin() { document.getElementById('loginOv').classList.add('active'); document.getElementById('loginModal').classList.add('active'); document.body.style.overflow = 'hidden'; showLogForm(); }
-function closeLogin() { 
-  document.getElementById('loginOv').classList.remove('active'); 
-  document.getElementById('loginModal').classList.remove('active'); 
-  
-  // চেক করবে অন্য কোনো মোডাল (প্রোডাক্ট, কার্ট, চেকআউট) ওপেন আছে কি না। থাকলে ব্যাকগ্রাউন্ড স্ক্রল ব্লক থাকবে।
-  var isOtherOpen = document.querySelector('.pm-ov.active, .cart-ov.active, .wl-ov.active, .co-ov.active');
-  if (!isOtherOpen) {
-    document.body.style.overflow = '';
-  }
-  
-  ['loginEmail', 'loginPass', 'regName', 'regEmail', 'regPhone', 'regPass', 'forgotEmail'].forEach(function (i) { document.getElementById(i).value = ''; }); 
-  ['loginError', 'regError', 'forgotError', 'forgotSuccess'].forEach(function (i) { document.getElementById(i).classList.remove('show'); }); 
-  document.querySelectorAll('.login-modal .co-submit').forEach(function (b) { b.disabled = false; }); 
-}
+function closeLogin() { document.getElementById('loginOv').classList.remove('active'); document.getElementById('loginModal').classList.remove('active'); document.body.style.overflow = ''; ['loginEmail', 'loginPass', 'regName', 'regEmail', 'regPhone', 'regPass', 'forgotEmail'].forEach(function (i) { document.getElementById(i).value = ''; }); ['loginError', 'regError', 'forgotError', 'forgotSuccess'].forEach(function (i) { document.getElementById(i).classList.remove('show'); }); document.querySelectorAll('.login-modal .co-submit').forEach(function (b) { b.disabled = false; }); }
 function showLogForm() { document.getElementById('loginFormDiv').style.display = 'block'; document.getElementById('regFormDiv').style.display = 'none'; document.getElementById('forgotFormDiv').style.display = 'none'; document.getElementById('loginTitle').textContent = 'Login'; document.getElementById('loginError').classList.remove('show'); }
 function showRegForm() { document.getElementById('loginFormDiv').style.display = 'none'; document.getElementById('regFormDiv').style.display = 'block'; document.getElementById('forgotFormDiv').style.display = 'none'; document.getElementById('loginTitle').textContent = 'Register'; document.getElementById('regError').classList.remove('show'); }
 function showForgotForm() { document.getElementById('loginFormDiv').style.display = 'none'; document.getElementById('regFormDiv').style.display = 'none'; document.getElementById('forgotFormDiv').style.display = 'block'; document.getElementById('loginTitle').textContent = 'Reset Password'; document.getElementById('forgotError').classList.remove('show'); document.getElementById('forgotSuccess').classList.remove('show'); }
@@ -574,11 +561,12 @@ function selectPMSize(el, s) { document.querySelectorAll('.pm-sbtn').forEach(fun
 function pmQty(d) { pmQuantity += d; if(pmQuantity < 1) pmQuantity = 1; document.getElementById('pmQtyVal').textContent = pmQuantity; }
 
 /* ==========================================
-   CART & CHECKOUT FUNCTIONS
+   CART & CHECKOUT FUNCTIONS (মডিফাই করা অংশ)
    ========================================== */
 function pmAddToCart() {
   if (!isLoggedIn()) {
-    openLogin(); // শুধু লগইন পেজ ওপেন করবে, অটোমেটিক কিছু করবে না
+    pendingCartAction = pmAddToCart;
+    openLogin();
     return;
   }
   if (!pmCurrentProduct) return;
@@ -631,7 +619,7 @@ function performSearch(q) {
 }
 
 /* ==========================================
-   পেমেন্ট টগল এবং চেকআউট
+   পেমেন্ট টগল এবং চেকআউট (মডিফাই করা অংশ)
    ========================================== */
 function toggleTxnField() {
   var method = document.getElementById('coPayMethod').value;
@@ -664,7 +652,8 @@ function toggleTxnField() {
 function openCheckout() {
   if (!cart.length) { showToast('Your cart is empty'); return; }
   if (!isLoggedIn()) {
-    openLogin(); // শুধু লগইন পেজ ওপেন করবে
+    pendingCartAction = openCheckout;
+    openLogin();
     return;
   }
   document.getElementById('coOv').classList.add('active');
@@ -688,11 +677,7 @@ function closeCheckout() {
 }
 
 async function submitOrder() {
-  if (!isLoggedIn()) { 
-    showToast('Please login to place an order'); 
-    openLogin(); // শুধু লগইন পেজ ওপেন করবে
-    return; 
-  }
+  if (!isLoggedIn()) { showToast('Please login to place an order'); pendingCartAction = submitOrder; openLogin(); return; }
   var name = document.getElementById('coName').value.trim();
   var email = document.getElementById('coEmail').value.trim();
   var phone = document.getElementById('coPhone').value.trim();
