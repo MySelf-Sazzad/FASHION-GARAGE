@@ -54,9 +54,9 @@ button,input,select,textarea{font-family:var(--fb)}
 .mob-toggle.active span:nth-child(2){opacity:0}
 .mob-toggle.active span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
 .mob-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:998;opacity:0;transition:opacity .3s}
-.mob-overlay.active{opacity:1}
+.mob-overlay.active{display:block;opacity:1}
 .mob-nav{display:none;position:fixed;top:0;right:-300px;width:300px;height:100%;background:var(--bg2);z-index:1000;padding:100px 30px 30px;transition:right .4s cubic-bezier(.4,0,.2,1);overflow-y:auto}
-.mob-nav.active{right:0}
+.mob-nav.active{display:block;right:0}
 .mob-nav>a{display:block;font-family:var(--fh);font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--lg);padding:16px 0;border-bottom:1px solid rgba(255,255,255,.06);transition:color .3s,padding-left .3s}
 .mob-nav>a:hover,.mob-nav>a.active{color:var(--gold);padding-left:10px}
 .mob-sub{display:none;padding-left:15px}
@@ -390,12 +390,46 @@ button,input,select,textarea{font-family:var(--fb)}
 .co-field input::placeholder,.co-field textarea::placeholder{color:rgba(255,255,255,.25)}
 .co-field select option{background:var(--card);color:var(--w)}
 .co-field textarea{resize:vertical;min-height:80px}
+.co-pay-info-box{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;background:rgba(212,160,23,.08);border:1px solid rgba(212,160,23,.3)}
+.co-pay-info-box i{color:var(--gold);font-size:18px;margin-top:2px}
+.co-pay-info-box p{font-size:13px;color:var(--lg);margin:0 0 4px}
+.co-pay-info-box p strong{color:var(--w)}
+.co-pay-number{font-family:var(--fh);font-size:18px;font-weight:800;color:var(--gold)!important;letter-spacing:1px}
 .co-submit{width:100%;padding:16px;background:var(--gold);border:1px solid var(--gold);color:var(--bg);font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .3s;margin-top:8px}
 .co-submit:hover{background:var(--agold);border-color:var(--agold);box-shadow:0 0 20px rgba(212,160,23,.3)}
 .login-error{color:var(--danger);font-size:12px;margin-bottom:12px;display:none;padding:8px 12px;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.2)}
 .login-error.show{display:block}
+.login-success{color:var(--success);font-size:12px;margin-bottom:12px;display:none;padding:8px 12px;background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.2)}
+.login-success.show{display:block}
 .login-switch{text-align:center;font-size:13px;color:var(--lg);margin-top:16px}
 .login-switch a{color:var(--gold);font-weight:600}
+.login-bottom-links{text-align:center;margin-bottom:4px}
+.login-bottom-links a{color:var(--gold);font-size:13px;font-weight:500}
+
+/* Google Button */
+.google-btn{width:100%;padding:14px;background:#fff;border:1px solid #ddd;color:#333;font-family:var(--fb);font-size:14px;font-weight:500;cursor:pointer;transition:all .3s;display:flex;align-items:center;justify-content:center;gap:12px;border-radius:4px}
+.google-btn:hover{background:#f8f8f8;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+
+/* Social Divider */
+.social-divider{display:flex;align-items:center;gap:16px;margin:20px 0;color:var(--lg);font-size:12px;letter-spacing:1px}
+.social-divider::before,.social-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.1)}
+
+/* Password Wrap */
+.pass-wrap{position:relative}
+.pass-wrap input{width:100%;padding-right:44px!important}
+.pass-toggle{position:absolute;right:1px;top:1px;bottom:1px;width:40px;background:var(--bg);border:none;border-left:1px solid rgba(255,255,255,.08);color:var(--lg);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .3s}
+.pass-toggle:hover{color:var(--gold)}
+
+/* Order Summary in Checkout */
+.co-order-summary{background:var(--bg);border:1px solid rgba(255,255,255,.06);padding:16px;max-height:200px;overflow-y:auto}
+.co-order-summary h4{font-family:var(--fh);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+.co-summary-item{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);align-items:center}
+.co-summary-item img{width:40px;height:50px;object-fit:cover;border:1px solid rgba(255,255,255,.06)}
+.co-summary-item-info{flex:1;min-width:0}
+.co-summary-item-info h5{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.co-summary-item-info p{font-size:11px;color:var(--lg)}
+.co-summary-item-price{font-size:13px;font-weight:600;color:var(--gold);white-space:nowrap}
+.co-summary-total{display:flex;justify-content:space-between;padding-top:12px;margin-top:8px;border-top:1px solid rgba(212,160,23,.15);font-family:var(--fh);font-weight:700;font-size:14px;color:var(--gold)}
 
 /* ==========================================
    Fade In Animation
@@ -450,6 +484,7 @@ button,input,select,textarea{font-family:var(--fb)}
   .cart-sb,.wl-sb{width:100vw;right:-100vw}
   .pm{width:95vw;max-height:95vh}
   .cta-content h2{font-size:28px}
+  .search-results-grid{grid-template-columns:1fr 1fr}
 }
 
 /* ==========================================
@@ -566,66 +601,68 @@ button,input,select,textarea{font-family:var(--fb)}
 .admin-modal-hdr button:hover{color:var(--gold)}
 .admin-modal-body{padding:24px;overflow-y:auto;flex:1}
 
-/* Admin Product Form */
-.adm-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+/* Admin Form */
+.adm-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .adm-form-full{grid-column:1/-1}
 .adm-form-group{margin-bottom:0}
-.adm-form-group label{display:block;font-family:var(--fh);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--lg);margin-bottom:8px}
-.adm-form-group input,.adm-form-group select,.adm-form-group textarea{width:100%;padding:12px 14px;background:var(--bg);border:1px solid rgba(255,255,255,.08);color:var(--w);font-size:13px;outline:none;transition:border-color .3s}
-.adm-form-group input:focus,.adm-form-group select:focus,.adm-form-group textarea:focus{border-color:var(--gold)}
+.adm-form-group label{display:block;font-family:var(--fh);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--lg);margin-bottom:8px}
+.adm-form-group input,.adm-form-group textarea,.adm-form-group select{width:100%;padding:12px 16px;background:var(--bg);border:1px solid rgba(255,255,255,.08);color:var(--w);font-size:14px;outline:none;transition:border-color .3s}
+.adm-form-group input:focus,.adm-form-group textarea:focus,.adm-form-group select:focus{border-color:var(--gold)}
+.adm-form-group input::placeholder{color:rgba(255,255,255,.25)}
 .adm-form-group select option{background:var(--card);color:var(--w)}
-.adm-form-group textarea{resize:vertical;min-height:70px}
-.adm-img-preview{width:100%;height:120px;background:var(--bg);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;margin-bottom:10px;overflow:hidden}
+.adm-form-group textarea{resize:vertical;min-height:80px}
+.adm-form-bottom{grid-column:1/-1;display:flex;justify-content:flex-end;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)}
+.adm-form-check{display:flex!important;align-items:center;gap:10px;cursor:pointer}
+.adm-form-check input{width:18px!important;height:18px;accent-color:var(--gold)}
+.adm-form-check span{font-size:13px;color:var(--lg)}
+
+/* Admin Image Preview */
+.adm-img-preview{width:100%;height:200px;background:var(--bg);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;margin-bottom:12px;overflow:hidden}
 .adm-img-preview img{width:100%;height:100%;object-fit:contain}
-.adm-img-preview .placeholder{color:rgba(255,255,255,.25);font-size:13px}
-.adm-img-inputs{display:flex;flex-direction:column;gap:10px}
-.adm-img-url-wrap{position:relative}
-.adm-img-or{text-align:center;font-size:11px;color:var(--lg);letter-spacing:1px;padding:4px 0}
+.adm-img-preview .placeholder{color:rgba(255,255,255,.2);font-size:13px}
+.adm-img-inputs{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.adm-img-url-wrap{flex:1;min-width:200px}
+.adm-img-url-wrap input{width:100%;padding:10px 14px;background:var(--bg);border:1px solid rgba(255,255,255,.08);color:var(--w);font-size:13px;outline:none;transition:border-color .3s}
+.adm-img-url-wrap input:focus{border-color:var(--gold)}
+.adm-img-url-wrap input::placeholder{color:rgba(255,255,255,.25)}
+.adm-img-or{color:var(--lg);font-size:12px;font-weight:600;letter-spacing:1px}
 .adm-img-upload-wrap{position:relative}
-.adm-img-upload-wrap input[type="file"]{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;z-index:2}
-.adm-img-upload-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1px dashed rgba(212,160,23,.4);color:var(--gold);font-size:13px;cursor:pointer;transition:all .3s;background:rgba(212,160,23,.03)}
-.adm-img-upload-btn:hover{border-color:var(--gold);background:rgba(212,160,23,.08)}
+.adm-img-upload-btn{padding:10px 20px;background:var(--bg);border:1px solid rgba(212,160,23,.3);color:var(--gold);font-family:var(--fh);font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .3s}
+.adm-img-upload-btn:hover{background:rgba(212,160,23,.08);border-color:var(--gold)}
+.adm-img-upload-btn input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+/* Admin Color & Size Picks */
 .adm-color-picks{display:flex;flex-wrap:wrap;gap:8px}
-.adm-color-pick{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .3s;position:relative}
+.adm-color-pick{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .3s}
 .adm-color-pick:hover{transform:scale(1.15)}
-.adm-color-pick.active{border-color:var(--gold);box-shadow:0 0 8px rgba(212,160,23,.4)}
-.adm-color-pick.active::after{content:'\2713';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8)}
-.adm-color-pick.light-c.active::after{color:var(--bg);text-shadow:none}
+.adm-color-pick.active{border-color:var(--gold);box-shadow:0 0 8px rgba(212,160,23,.5)}
+.adm-color-pick.light-c{border:1px solid rgba(255,255,255,.2)}
+.adm-color-pick.light-c.active{border-color:var(--gold);border-width:2px}
 .adm-size-picks{display:flex;flex-wrap:wrap;gap:8px}
 .adm-size-pick{padding:8px 16px;border:1px solid rgba(255,255,255,.1);background:transparent;color:var(--lg);font-family:var(--fh);font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all .3s}
-.adm-size-pick:hover,.adm-size-pick.active{border-color:var(--gold);color:var(--gold);background:rgba(212,160,23,.08)}
-
-/* In Stock Checkbox Fix */
-.adm-form-check{display:flex !important;align-items:center !important;gap:12px !important;cursor:pointer;font-family:var(--fb) !important;font-size:14px !important;font-weight:400 !important;letter-spacing:0 !important;text-transform:none !important;color:var(--w) !important;margin-top:8px}
-.adm-form-check input[type="checkbox"]{width:22px !important;height:22px !important;appearance:none !important;-webkit-appearance:none !important;border:2px solid rgba(212,160,23,.5) !important;background:transparent !important;cursor:pointer !important;position:relative !important;flex-shrink:0 !important;transition:all .3s !important;border-radius:4px !important}
-.adm-form-check input[type="checkbox"]:checked{background:var(--gold) !important;border-color:var(--gold) !important}
-.adm-form-check input[type="checkbox"]:checked::after{content:'\2713' !important;position:absolute !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) !important;font-size:13px !important;color:var(--bg) !important;font-weight:700 !important}
-
-.adm-form-bottom{grid-column:1/-1;display:flex;gap:12px;justify-content:flex-end;margin-top:10px;padding-top:20px;border-top:1px solid rgba(255,255,255,.06)}
-
-/* Admin Order Info Cards */
-.adm-order-info{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
-.adm-order-info-card{background:var(--bg);border:1px solid rgba(255,255,255,.06);padding:20px}
-.adm-order-info-card h4{font-family:var(--fh);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.06)}
-.adm-order-info-card p{font-size:13px;color:var(--lg);margin-bottom:6px;line-height:1.6}
-.adm-order-info-card p strong{color:var(--w)}
-.adm-order-items{margin-bottom:20px}
-.adm-order-item{display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.04)}
-.adm-order-item img{width:50px;height:60px;object-fit:cover;border:1px solid rgba(255,255,255,.06)}
-.adm-order-item-info{flex:1;min-width:0}
-.adm-order-item-info h5{font-family:var(--fh);font-size:12px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--w);margin-bottom:4px}
-.adm-order-item-info p{font-size:11px;color:var(--lg)}
-.adm-order-item-price{font-family:var(--fh);font-size:14px;font-weight:600;color:var(--gold);white-space:nowrap}
-.adm-order-total{display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:16px 0;border-top:1px solid rgba(255,255,255,.08)}
-.adm-order-total span{font-size:14px;color:var(--lg);letter-spacing:1px;text-transform:uppercase}
-.adm-order-total strong{font-family:var(--fh);font-size:22px;font-weight:800;color:var(--gold)}
+.adm-size-pick:hover{border-color:rgba(212,160,23,.4);color:var(--w)}
+.adm-size-pick.active{border-color:var(--gold);color:var(--gold);background:rgba(212,160,23,.1)}
 
 /* Admin Settings */
 .adm-settings-card{background:var(--card);border:1px solid rgba(255,255,255,.04);padding:24px;margin-bottom:20px}
-.adm-settings-card h3{font-family:var(--fh);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--w);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.06)}
-.adm-settings-card .adm-form-group{margin-bottom:16px}
+.adm-settings-card h3{font-family:var(--fh);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--w);margin-bottom:16px}
 .adm-danger-zone{border-color:rgba(231,76,60,.2)}
 .adm-danger-zone h3{color:var(--danger)}
+
+/* Admin Order Detail */
+.adm-order-info{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.adm-order-info-card{background:var(--bg);border:1px solid rgba(255,255,255,.04);padding:16px}
+.adm-order-info-card h4{font-family:var(--fh);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.06)}
+.adm-order-info-card p{font-size:13px;color:var(--lg);margin-bottom:4px;line-height:1.6}
+.adm-order-info-card p strong{color:var(--w)}
+.adm-order-items{margin-bottom:16px}
+.adm-order-item{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.04);align-items:center}
+.adm-order-item img{width:50px;height:60px;object-fit:cover;border:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.adm-order-item-info{flex:1;min-width:0}
+.adm-order-item-info h5{font-size:13px;font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adm-order-item-info p{font-size:11px;color:var(--lg)}
+.adm-order-item-price{font-size:14px;font-weight:600;color:var(--gold);white-space:nowrap}
+.adm-order-total{background:var(--bg);border:1px solid rgba(255,255,255,.06);padding:16px}
 
 /* Admin Responsive */
 @media(max-width:768px){
@@ -633,83 +670,13 @@ button,input,select,textarea{font-family:var(--fb)}
   .admin-sidebar.open{transform:translateX(0)}
   .admin-main{margin-left:0}
   .admin-mob-menu{display:block}
-  .admin-form-grid{grid-template-columns:1fr}
-  .adm-order-info{grid-template-columns:1fr}
   .adm-stats{grid-template-columns:1fr 1fr}
-}
-
-/* ==========================================
-   Google Sign-In Button
-   ========================================== */
-.google-btn{width:100%;padding:13px 16px;background:#fff;border:1px solid #e0e0e0;color:#3c4043;font-family:'Poppins',sans-serif;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;transition:all .3s;margin-bottom:4px;border-radius:6px}
-.google-btn:hover{background:#f8f9fa;border-color:#ccc;box-shadow:0 2px 8px rgba(0,0,0,.15)}
-.google-btn:active{transform:scale(.98)}
-.social-divider{display:flex;align-items:center;gap:16px;margin:20px 0}
-.social-divider::before,.social-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.1)}
-.social-divider span{color:var(--lg);font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;white-space:nowrap}
-.login-bottom-links{text-align:center;margin-top:14px}
-.login-bottom-links a{color:var(--gold);font-size:13px;font-weight:500;transition:color .3s}
-.login-bottom-links a:hover{color:var(--agold);text-decoration:underline}
-.login-success{color:var(--success);font-size:12px;margin-bottom:12px;padding:10px 14px;background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.2);display:none;border-radius:4px;line-height:1.6}
-.login-success.show{display:block}
-.pass-wrap{position:relative}
-.pass-wrap input{width:100%;padding-right:44px!important}
-.pass-toggle{position:absolute;right:1px;top:1px;bottom:1px;width:40px;background:transparent;border:none;color:var(--lg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:color .3s}
-.pass-toggle:hover{color:var(--gold)}
-
-/* User dropdown menu */
-.user-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:var(--card);border:1px solid rgba(212,160,23,.2);min-width:220px;padding:8px 0;opacity:0;visibility:hidden;transform:translateY(-10px);transition:all .3s;z-index:1000;box-shadow:0 15px 40px rgba(0,0,0,.5)}
-.user-dropdown.show{opacity:1;visibility:visible;transform:translateY(0)}
-.user-dropdown-hdr{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:12px}
-.user-dropdown-avatar{width:36px;height:36px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;color:var(--bg);font-family:var(--fh);font-size:14px;font-weight:700;flex-shrink:0;overflow:hidden}
-.user-dropdown-avatar img{width:100%;height:100%;object-fit:cover}
-.user-dropdown-info h5{font-family:var(--fh);font-size:12px;font-weight:600;color:var(--w);letter-spacing:.5px}
-.user-dropdown-info p{font-size:11px;color:var(--lg)}
-.user-dropdown a{display:flex;align-items:center;gap:12px;padding:11px 16px;font-size:13px;color:var(--lg);transition:all .3s;cursor:pointer}
-.user-dropdown a:hover{color:var(--gold);background:rgba(212,160,23,.05);padding-left:20px}
-.user-dropdown a i{width:16px;text-align:center;font-size:13px}
-.user-dropdown .dd-divider{height:1px;background:rgba(255,255,255,.06);margin:4px 0}
-.user-dropdown .dd-logout{color:var(--danger)}
-.user-dropdown .dd-logout:hover{color:var(--danger);background:rgba(231,76,60,.05)}
-
-/* ==========================================
-   পেমেন্ট ইনফো বক্স (বিকাশ/নগদ)
-   ========================================== */
-.payment-info-box {
-  background: rgba(212,160,23,0.05);
-  border: 1px solid rgba(212,160,23,0.2);
-  padding: 16px;
-  border-radius: 6px;
-  margin-bottom: 5px;
-}
-.payment-info-box p {
-  font-size: 13px;
-  color: var(--lg);
-  margin-bottom: 8px;
-  line-height: 1.6;
-}
-.payment-info-box p:last-child {
-  margin-bottom: 0;
-}
-.payment-info-box .pi-label {
-  font-family: var(--fh);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--w);
-  display: block;
-  margin-bottom: 4px;
-}
-.payment-info-box strong {
-  color: var(--gold);
-  font-size: 16px;
-  letter-spacing: 1px;
-}
-.payment-info-box .pi-note {
-  font-size: 11px;
-  color: rgba(255,255,255,.4);
-  margin-top: 10px;
-  border-top: 1px dashed rgba(255,255,255,.1);
-  padding-top: 10px;
+  .adm-table-hdr{flex-direction:column;align-items:flex-start}
+  .adm-table-actions{width:100%}
+  .adm-search{width:100%}
+  .admin-modal{width:95vw;max-height:95vh}
+  .adm-form-grid{grid-template-columns:1fr}
+  .adm-order-info{grid-template-columns:1fr}
+  .adm-img-inputs{flex-direction:column}
+  .adm-img-or{display:none}
 }
