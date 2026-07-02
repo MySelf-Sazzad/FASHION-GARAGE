@@ -415,7 +415,7 @@ function productCard(p) {
   if (p.oldPrice) h += '<span class="old">' + fmtPrice(p.oldPrice) + '</span>';
   h += '</div>';
   if (p.inStock) {
-    h += '<button class="qv-btn" onclick="event.stopPropagation();openPM(' + p.id + ')">ORDER NOW</button>';
+    h += '<button class="qv-btn" onclick="event.stopPropagation();openPM(' + p.id + ')">Quick View</button>';
   } else {
     h += '<button class="qv-btn oos" disabled>Out of Stock</button>';
   }
@@ -1246,6 +1246,8 @@ function showAdminLogin() {
   document.getElementById('adminLoginError').classList.remove('show');
   document.getElementById('adminUser').value = '';
   document.getElementById('adminPass').value = '';
+  var btn = document.querySelector('.admin-login-btn');
+  if (btn) { btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login'; btn.disabled = false; }
   document.body.style.overflow = 'hidden';
 }
 
@@ -1300,6 +1302,8 @@ async function adminDoLogin() {
   document.getElementById('adminLoginOv').style.display = 'none';
   document.getElementById('adminPanel').style.display = 'flex';
   document.getElementById('adminUserDisp').textContent = 'Admin';
+  btn.innerHTML = ot;
+  btn.disabled = false;
   adminShowSec('dashboard');
 }
 
@@ -1386,6 +1390,23 @@ var admProdSearchQ = '', admProdFilterCat = '';
 
 async function renderAdminProducts() {
   products = await loadProducts();
+
+  var h = '<div class="adm-table-wrap"><div class="adm-table-hdr"><h3 id="admProdCountTitle">All Products (' + products.length + ')</h3><div class="adm-table-actions">';
+  h += '<div class="adm-search-wrap"><i class="fas fa-search"></i><input type="text" class="adm-search" placeholder="Search..." value="' + escHtml(admProdSearchQ) + '" oninput="admProdSearchQ=this.value;renderAdminProductsTable()"></div>';
+  h += '<select class="adm-filter-sel" onchange="admProdFilterCat=this.value;renderAdminProductsTable()"><option value="">All</option>';
+  ['men', 'women', 'watch', 'bag', 'perfume', 'jewelry', 'sunglasses', 'homedecor'].forEach(function (c) {
+    h += '<option value="' + c + '"' + (admProdFilterCat === c ? ' selected' : '') + '>' + c.charAt(0).toUpperCase() + c.slice(1) + '</option>';
+  });
+  h += '</select><button class="adm-btn" onclick="openAddProductModal()"><i class="fas fa-plus"></i> Add Product</button></div></div>';
+  h += '<div id="admProductsTableWrap"></div></div>';
+  document.getElementById('admProducts').innerHTML = h;
+
+  renderAdminProductsTable();
+}
+
+// Re-filters the already-loaded `products` array and updates ONLY the table area.
+// Does not touch the search input or refetch from the DB, so typing never loses focus.
+function renderAdminProductsTable() {
   var list = products.slice();
   if (admProdFilterCat) list = list.filter(function (p) { return p.category === admProdFilterCat; });
   if (admProdSearchQ) {
@@ -1393,14 +1414,7 @@ async function renderAdminProducts() {
     list = list.filter(function (p) { return p.name.toLowerCase().indexOf(q) !== -1 || p.id.toString().indexOf(q) !== -1; });
   }
 
-  var h = '<div class="adm-table-wrap"><div class="adm-table-hdr"><h3>All Products (' + list.length + ')</h3><div class="adm-table-actions">';
-  h += '<div class="adm-search-wrap"><i class="fas fa-search"></i><input type="text" class="adm-search" placeholder="Search..." value="' + escHtml(admProdSearchQ) + '" oninput="admProdSearchQ=this.value;renderAdminProducts()"></div>';
-  h += '<select class="adm-filter-sel" onchange="admProdFilterCat=this.value;renderAdminProducts()"><option value="">All</option>';
-  ['men', 'women', 'watch', 'bag', 'perfume', 'jewelry', 'sunglasses', 'homedecor'].forEach(function (c) {
-    h += '<option value="' + c + '"' + (admProdFilterCat === c ? ' selected' : '') + '>' + c.charAt(0).toUpperCase() + c.slice(1) + '</option>';
-  });
-  h += '</select><button class="adm-btn" onclick="openAddProductModal()"><i class="fas fa-plus"></i> Add Product</button></div></div>';
-
+  var h = '';
   if (!list.length) {
     h += '<div class="adm-table-empty"><i class="fas fa-box-open"></i>No products</div>';
   } else {
@@ -1417,8 +1431,10 @@ async function renderAdminProducts() {
     });
     h += '</tbody></table></div>';
   }
-  h += '</div>';
-  document.getElementById('admProducts').innerHTML = h;
+  var wrap = document.getElementById('admProductsTableWrap');
+  if (wrap) wrap.innerHTML = h;
+  var countEl = document.getElementById('admProdCountTitle');
+  if (countEl) countEl.textContent = 'All Products (' + list.length + ')';
 }
 
 function openAddProductModal() {
@@ -1607,6 +1623,18 @@ var admOrderSearchQ = '';
 
 async function renderAdminOrders() {
   orders = await loadOrders();
+
+  var h = '<div class="adm-table-wrap"><div class="adm-table-hdr"><h3 id="admOrderCountTitle">Orders (' + orders.length + ')</h3><div class="adm-table-actions">';
+  h += '<div class="adm-search-wrap"><i class="fas fa-search"></i><input type="text" class="adm-search" placeholder="Search..." value="' + escHtml(admOrderSearchQ) + '" oninput="admOrderSearchQ=this.value;renderAdminOrdersTable()"></div></div></div>';
+  h += '<div id="admOrdersTableWrap"></div></div>';
+  document.getElementById('admOrders').innerHTML = h;
+
+  renderAdminOrdersTable();
+}
+
+// Re-filters the already-loaded `orders` array and updates ONLY the table area.
+// Does not touch the search input or refetch from the DB, so typing never loses focus.
+function renderAdminOrdersTable() {
   var list = orders.slice();
   if (admOrderSearchQ) {
     var q = admOrderSearchQ.toLowerCase();
@@ -1615,9 +1643,7 @@ async function renderAdminOrders() {
     });
   }
 
-  var h = '<div class="adm-table-wrap"><div class="adm-table-hdr"><h3>Orders (' + list.length + ')</h3><div class="adm-table-actions">';
-  h += '<div class="adm-search-wrap"><i class="fas fa-search"></i><input type="text" class="adm-search" placeholder="Search..." value="' + escHtml(admOrderSearchQ) + '" oninput="admOrderSearchQ=this.value;renderAdminOrders()"></div></div></div>';
-
+  var h = '';
   if (!list.length) {
     h += '<div class="adm-table-empty"><i class="fas fa-inbox"></i>No orders</div>';
   } else {
@@ -1634,8 +1660,10 @@ async function renderAdminOrders() {
     });
     h += '</tbody></table></div>';
   }
-  h += '</div>';
-  document.getElementById('admOrders').innerHTML = h;
+  var wrap = document.getElementById('admOrdersTableWrap');
+  if (wrap) wrap.innerHTML = h;
+  var countEl = document.getElementById('admOrderCountTitle');
+  if (countEl) countEl.textContent = 'Orders (' + list.length + ')';
 }
 
 async function openOrderDetailModal(id) {
