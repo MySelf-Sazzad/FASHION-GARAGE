@@ -59,7 +59,7 @@ var ADMIN_COLORS = [
   { hex: '#4A0E0E', name: 'Dark Red', light: false }, { hex: '#2F4F4F', name: 'Dark Slate', light: false }
 ];
 var ADMIN_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size'];
-var PERFUME_SIZES = ['30ml', '50ml', '100ml'];
+var PERFUME_SIZES = ['10ml', '20ml', '30ml', '50ml', '100ml'];
 var SUB_CATS = {
   men: ['jacket', 'shirt', 'trousers', 'sweater', 'polo'],
   women: ['dress', 'top', 'skirt', 'coat', 'blouse'],
@@ -136,7 +136,7 @@ var pmCurrentProduct = null, pmSelectedColor = '', pmSelectedSize = '', pmQuanti
 var pendingCartAction = null;
 var currentPageInfo = { page: 'home', gridId: '', countId: '', filterId: '', subFilter: null };
 var _activeSubFilter = '', _activeSizes = [];
-var admEditId = null, admFormColors = [], admFormSizes = [];
+var admEditId = null, admFormColors = [], admFormSizes = [], admFormSizePrices = {};
 
 function loadWishlist() {
   try { var s = localStorage.getItem('fg_wishlist'); if (s) wishlist = new Set(JSON.parse(s)); } catch (e) { }
@@ -150,6 +150,16 @@ function saveWishlist() {
    ========================================== */
 function fmtPrice(n) {
   return '\u09F3' + Number(n || 0).toLocaleString('en-IN');
+}
+
+/* ==========================================
+   SIZE-BASED PRICE HELPER (for perfumes etc.)
+   ========================================== */
+function getSizePrice(p, size) {
+  if (p && p.sizePrices && size && p.sizePrices[size] != null && p.sizePrices[size] !== '') {
+    return Number(p.sizePrices[size]);
+  }
+  return p ? p.price : 0;
 }
 
 /* ==========================================
@@ -411,7 +421,7 @@ function productCard(p) {
   if (p.tag) h += '<div class="p-tag">' + escHtml(p.tag) + '</div>';
   if (!p.inStock) h += '<div class="p-oos-tag">Out of Stock</div>';
   h += '</div><div class="p-details"><h4>' + escHtml(p.name) + '</h4>';
-  h += '<div class="p-price"><span class="cur">' + fmtPrice(p.price) + '</span>';
+  h += '<div class="p-price">' + (p.sizePrices && Object.keys(p.sizePrices).length > 1 ? '<span class="from-label">From</span> ' : '') + '<span class="cur">' + fmtPrice(p.price) + '</span>';
   if (p.oldPrice) h += '<span class="old">' + fmtPrice(p.oldPrice) + '</span>';
   h += '</div>';
   if (p.inStock) {
@@ -595,7 +605,7 @@ function wlQuickAdd(id) {
   var color = p.colors && p.colors.length ? p.colors[0] : '';
   var size = p.sizes && p.sizes.length ? p.sizes[0] : '';
   addToCart({
-    productId: p.id, name: p.name, price: p.price, image: p.image,
+    productId: p.id, name: p.name, price: getSizePrice(p, size), image: p.image,
     color: color, size: size, qty: 1
   });
 }
@@ -649,9 +659,7 @@ function openPM(id) {
   else { tagEl.innerHTML = ''; }
 
   document.getElementById('pmName').textContent = p.name;
-  var priceH = '<span class="cur">' + fmtPrice(p.price) + '</span>';
-  if (p.oldPrice) priceH += '<span class="old">' + fmtPrice(p.oldPrice) + '</span>';
-  document.getElementById('pmPrice').innerHTML = priceH;
+  updatePmPrice();
 
   // Colors
   var cH = '';
@@ -716,6 +724,16 @@ function selectPmSize(s, el) {
   pmSelectedSize = s;
   document.querySelectorAll('.pm-sbtn').forEach(function (b) { b.classList.remove('active'); });
   el.classList.add('active');
+  updatePmPrice();
+}
+
+function updatePmPrice() {
+  var p = pmCurrentProduct;
+  if (!p) return;
+  var curPrice = getSizePrice(p, pmSelectedSize);
+  var priceH = '<span class="cur">' + fmtPrice(curPrice) + '</span>';
+  if (p.oldPrice) priceH += '<span class="old">' + fmtPrice(p.oldPrice) + '</span>';
+  document.getElementById('pmPrice').innerHTML = priceH;
 }
 
 function pmQty(dir) {
@@ -730,7 +748,7 @@ function pmAddToCart() {
   addToCart({
     productId: pmCurrentProduct.id,
     name: pmCurrentProduct.name,
-    price: pmCurrentProduct.price,
+    price: getSizePrice(pmCurrentProduct, pmSelectedSize),
     image: pmCurrentProduct.image,
     color: pmSelectedColor,
     size: pmSelectedSize,
@@ -1424,7 +1442,7 @@ function renderAdminProductsTable() {
       h += '<td><img src="' + p.image + '" class="adm-table-img" onerror="this.src=\'https://via.placeholder.com/50x60/121212/d4a017?text=No+Img\'"></td>';
       h += '<td class="adm-table-name">' + escHtml(p.name) + '</td>';
       h += '<td><span class="adm-table-cat">' + p.category + (p.subCategory ? ' / ' + p.subCategory : '') + '</span></td>';
-      h += '<td>' + fmtPrice(p.price) + (p.oldPrice ? ' <br><span style="text-decoration:line-through;color:rgba(255,255,255,.3);font-size:11px">' + fmtPrice(p.oldPrice) + '</span>' : '') + '</td>';
+      h += '<td>' + (p.sizePrices && Object.keys(p.sizePrices).length > 1 ? 'From ' : '') + fmtPrice(p.price) + (p.oldPrice ? ' <br><span style="text-decoration:line-through;color:rgba(255,255,255,.3);font-size:11px">' + fmtPrice(p.oldPrice) + '</span>' : '') + '</td>';
       h += '<td>' + (p.inStock ? '<span class="adm-stock-yes"><i class="fas fa-check-circle"></i> In</span>' : '<span class="adm-stock-no"><i class="fas fa-times-circle"></i> Out</span>') + '</td>';
       h += '<td><div class="adm-actions"><button class="adm-act-btn" onclick="openEditProductModal(' + p.id + ')"><i class="fas fa-pen"></i></button><button class="adm-act-btn del" onclick="deleteProduct(' + p.id + ')"><i class="fas fa-trash"></i></button></div></td>';
       h += '</tr>';
@@ -1441,8 +1459,9 @@ function openAddProductModal() {
   admEditId = null;
   admFormColors = [];
   admFormSizes = [];
+  admFormSizePrices = {};
   document.getElementById('admModalTitle').textContent = 'Add New Product';
-  renderProductForm({ name: '', price: '', oldPrice: '', category: 'men', subCategory: '', image: '', colors: [], sizes: [], inStock: true, tag: '', description: '' });
+  renderProductForm({ name: '', price: '', oldPrice: '', category: 'men', subCategory: '', image: '', colors: [], sizes: [], sizePrices: {}, inStock: true, tag: '', description: '' });
   document.getElementById('admModalOv').classList.add('active');
   document.getElementById('admProductModal').classList.add('active');
 }
@@ -1454,6 +1473,7 @@ async function openEditProductModal(id) {
   admEditId = id;
   admFormColors = p.colors ? p.colors.slice() : [];
   admFormSizes = p.sizes ? p.sizes.slice() : [];
+  admFormSizePrices = p.sizePrices ? Object.assign({}, p.sizePrices) : {};
   document.getElementById('admModalTitle').textContent = 'Edit Product';
   renderProductForm(p);
   document.getElementById('admModalOv').classList.add('active');
@@ -1476,7 +1496,7 @@ function renderProductForm(p) {
   h += '</select></div>';
   h += '<div class="adm-form-group"><label>Sub-Category</label><select id="afSubCat"></select></div>';
 
-  h += '<div class="adm-form-group"><label>Price (&#x09F3;)</label><input type="number" id="afPrice" value="' + (p.price || '') + '" min="0"></div>';
+  h += '<div class="adm-form-group" id="afPriceGroup"' + (p.category === 'perfume' ? ' style="display:none"' : '') + '><label>Price (&#x09F3;)</label><input type="number" id="afPrice" value="' + (p.price || '') + '" min="0"></div>';
   h += '<div class="adm-form-group"><label>Old Price (&#x09F3;)</label><input type="number" id="afOldPrice" value="' + (p.oldPrice || '') + '" min="0"></div>';
 
   h += '<div class="adm-form-full adm-form-group"><label>Image</label>';
@@ -1491,11 +1511,8 @@ function renderProductForm(p) {
   });
   h += '</div></div>';
 
-  h += '<div class="adm-form-full adm-form-group"><label>Sizes</label><div class="adm-size-picks" id="afSizePicks">';
-  var sz = (p.category === 'perfume') ? PERFUME_SIZES : ADMIN_SIZES;
-  sz.forEach(function (s) {
-    h += '<div class="adm-size-pick' + ((p.sizes || []).indexOf(s) !== -1 ? ' active' : '') + '" onclick="toggleAdmSize(this,\'' + s + '\')">' + s + '</div>';
-  });
+  h += '<div class="adm-form-full adm-form-group"><label>Sizes' + (p.category === 'perfume' ? ' &amp; Price per Size (&#x09F3;)' : '') + '</label><div class="adm-size-picks" id="afSizePicks">';
+  h += buildAdmSizePicksHtml(p.category);
   h += '</div></div>';
 
   h += '<div class="adm-form-group"><label>Tag</label><select id="afTag"><option value="">None</option>';
@@ -1511,6 +1528,23 @@ function renderProductForm(p) {
   h += '<div class="adm-form-bottom"><button class="adm-btn adm-btn-outline" onclick="closeAdmModal()">Cancel</button><button class="adm-btn" onclick="saveProductFromModal()"><i class="fas fa-save"></i> Save</button></div></div>';
   document.getElementById('admModalBody').innerHTML = h;
   updateSubCatOptions(p.subCategory);
+}
+
+function buildAdmSizePicksHtml(cat) {
+  var sz = (cat === 'perfume') ? PERFUME_SIZES : ADMIN_SIZES;
+  var h = '';
+  sz.forEach(function (s) {
+    var active = admFormSizes.indexOf(s) !== -1;
+    if (cat === 'perfume') {
+      h += '<div class="adm-size-price-row">';
+      h += '<div class="adm-size-pick' + (active ? ' active' : '') + '" onclick="toggleAdmSize(this,\'' + s + '\')">' + s + '</div>';
+      h += '<input type="number" class="adm-size-price-input" id="afSizePrice_' + s + '" placeholder="Price" min="0" style="display:' + (active ? 'inline-block' : 'none') + '" value="' + (admFormSizePrices[s] != null ? admFormSizePrices[s] : '') + '" oninput="admFormSizePrices[\'' + s + '\']=this.value">';
+      h += '</div>';
+    } else {
+      h += '<div class="adm-size-pick' + (active ? ' active' : '') + '" onclick="toggleAdmSize(this,\'' + s + '\')">' + s + '</div>';
+    }
+  });
+  return h;
 }
 
 function previewImgUrl(v) {
@@ -1543,12 +1577,13 @@ function updateSubCatOptions(sel) {
   el.innerHTML = h;
 
   var se = document.getElementById('afSizePicks');
-  var st = (cat === 'perfume') ? PERFUME_SIZES : ADMIN_SIZES;
-  var sh = '';
-  st.forEach(function (s) {
-    sh += '<div class="adm-size-pick' + (admFormSizes.indexOf(s) !== -1 ? ' active' : '') + '" onclick="toggleAdmSize(this,\'' + s + '\')">' + s + '</div>';
-  });
-  se.innerHTML = sh;
+  se.innerHTML = buildAdmSizePicksHtml(cat);
+
+  var pg = document.getElementById('afPriceGroup');
+  if (pg) pg.style.display = (cat === 'perfume') ? 'none' : '';
+
+  var lbl = se.parentElement.querySelector('label');
+  if (lbl) lbl.innerHTML = 'Sizes' + (cat === 'perfume' ? ' &amp; Price per Size (&#x09F3;)' : '');
 }
 
 function toggleAdmColor(el, hex) {
@@ -1560,14 +1595,20 @@ function toggleAdmColor(el, hex) {
 
 function toggleAdmSize(el, size) {
   el.classList.toggle('active');
+  var isActive = el.classList.contains('active');
   var i = admFormSizes.indexOf(size);
-  if (i === -1) admFormSizes.push(size);
-  else admFormSizes.splice(i, 1);
+  if (isActive && i === -1) admFormSizes.push(size);
+  else if (!isActive && i !== -1) admFormSizes.splice(i, 1);
+
+  var priceInput = document.getElementById('afSizePrice_' + size);
+  if (priceInput) {
+    priceInput.style.display = isActive ? 'inline-block' : 'none';
+    if (!isActive) { priceInput.value = ''; admFormSizePrices[size] = ''; }
+  }
 }
 
 async function saveProductFromModal() {
   var n = document.getElementById('afName').value.trim();
-  var pr = parseInt(document.getElementById('afPrice').value);
   var op = parseInt(document.getElementById('afOldPrice').value) || 0;
   var cat = document.getElementById('afCat').value;
   var sc = document.getElementById('afSubCat').value;
@@ -1577,13 +1618,30 @@ async function saveProductFromModal() {
   var desc = document.getElementById('afDesc').value.trim();
 
   if (!n) { showToast('Name required'); return; }
-  if (!pr || pr <= 0) { showToast('Valid price required'); return; }
   if (!img) { showToast('Image required'); return; }
+
+  var pr, sizePrices = {};
+
+  if (cat === 'perfume') {
+    if (!admFormSizes.length) { showToast('Select at least one size'); return; }
+    for (var k = 0; k < admFormSizes.length; k++) {
+      var sSize = admFormSizes[k];
+      var sPrice = parseInt(admFormSizePrices[sSize]);
+      if (!sPrice || sPrice <= 0) { showToast('Valid price required for ' + sSize); return; }
+      sizePrices[sSize] = sPrice;
+    }
+    // Base/card price = price of the smallest selected volume
+    var orderedSizes = PERFUME_SIZES.filter(function (s) { return sizePrices[s] != null; });
+    pr = sizePrices[orderedSizes[0]];
+  } else {
+    pr = parseInt(document.getElementById('afPrice').value);
+    if (!pr || pr <= 0) { showToast('Valid price required'); return; }
+  }
 
   var d = {
     name: n, price: pr, oldPrice: op, category: cat, subCategory: sc,
     image: img, colors: admFormColors.slice(), sizes: admFormSizes.slice(),
-    inStock: stk, tag: tag, description: desc
+    sizePrices: sizePrices, inStock: stk, tag: tag, description: desc
   };
 
   try {
