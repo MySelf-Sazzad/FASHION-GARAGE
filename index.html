@@ -348,20 +348,24 @@
     <div class="co-field"><label>Phone *</label><input type="tel" id="coPhone" placeholder="+880 1XXX-XXXXXX" required></div>
     <div class="co-field"><label>Address *</label><textarea id="coAddress" placeholder="Full shipping address" required></textarea></div>
     <div class="co-field"><label>Notes (Optional)</label><textarea id="coNotes" placeholder="Special instructions"></textarea></div>
-    <div class="co-field"><label>Payment Method</label>
+       <div class="co-field"><label>Payment Method</label>
       <select id="coPayMethod" onchange="toggleTxnField()">
         <option value="cod">Cash on Delivery</option>
         <option value="bkash">bKash</option>
         <option value="nagad">Nagad</option>
       </select>
     </div>
+    
+    <!-- বিকাশ/নগদ নাম্বার ও অ্যামাউন্ট দেখানোর বক্স -->
+    <div class="co-field" id="coPayInfo" style="display:none; margin-bottom: -10px;"></div>
+
     <div class="co-field" id="coTxnField" style="display:none">
       <label>Transaction ID *</label>
-      <input type="text" id="coTxnId" placeholder="Enter your transaction ID">
+      <input type="text" id="coTxnId" placeholder="Enter your transaction ID (e.g., Txnid12345)">
     </div>
+    
+    <!-- প্লেস অর্ডার বাটন -->
     <button class="co-submit" onclick="submitOrder()">Place Order</button>
-  </div>
-</div>
 
 <!-- ========================================== -->
 <!-- ===== ADMIN PANEL ===== -->
@@ -440,7 +444,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+
 <script src="script.js"></script>
   
 </script>
