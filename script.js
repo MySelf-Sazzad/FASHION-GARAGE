@@ -1087,6 +1087,13 @@ function clearFilters(page) {
   if (info.filterId) buildFilters(page, info.filterId, info.subFilter);
 }
 
+function toggleMobileFilters(btn, filterId) {
+  var panel = document.getElementById(filterId);
+  if (!panel) return;
+  panel.classList.toggle('mobile-open');
+  btn.classList.toggle('open');
+}
+
 /* ==========================================
    NEWSLETTER
    ========================================== */
@@ -1352,10 +1359,14 @@ async function adminShowSec(sec) {
     document.getElementById(sm[sec]).innerHTML = '<div class="adm-table-empty" style="padding:80px"><i class="fas fa-exclamation-triangle" style="font-size:48px;color:var(--danger);margin-bottom:20px;display:block"></i><p>Failed to load data</p></div>';
   }
   document.getElementById('adminSidebar').classList.remove('open');
+  var ov = document.getElementById('adminSidebarOverlay');
+  if (ov) ov.classList.remove('active');
 }
 
 function toggleAdminSidebar() {
   document.getElementById('adminSidebar').classList.toggle('open');
+  var ov = document.getElementById('adminSidebarOverlay');
+  if (ov) ov.classList.toggle('active');
 }
 
 /* ==========================================
