@@ -347,6 +347,12 @@
     <div class="co-field"><label>Email *</label><input type="email" id="coEmail" placeholder="your@email.com" required></div>
     <div class="co-field"><label>Phone *</label><input type="tel" id="coPhone" placeholder="+880 1XXX-XXXXXX" required></div>
     <div class="co-field"><label>Address *</label><textarea id="coAddress" placeholder="Full shipping address" required></textarea></div>
+    <div class="co-field"><label>Delivery Area *</label>
+      <select id="coDeliveryArea">
+        <option value="inside_dhaka">Inside Dhaka (৳80)</option>
+        <option value="outside_dhaka">Outside Dhaka (৳120)</option>
+      </select>
+    </div>
     <div class="co-field"><label>Notes (Optional)</label><textarea id="coNotes" placeholder="Special instructions"></textarea></div>
     <div class="co-field"><label>Payment Method</label>
       <select id="coPayMethod" onchange="toggleTxnField()">
@@ -355,10 +361,20 @@
         <option value="nagad">Nagad</option>
       </select>
     </div>
+    <div class="co-field" id="coPayInfo" style="display:none">
+      <div class="co-pay-info-box">
+        <i class="fas fa-circle-info"></i>
+        <div>
+          <p>Send <strong id="coPayAmount">৳0</strong> to this <span id="coPayMethodName">bKash</span> number:</p>
+          <p class="co-pay-number" id="coPayNumberDisp">—</p>
+        </div>
+      </div>
+    </div>
     <div class="co-field" id="coTxnField" style="display:none">
       <label>Transaction ID *</label>
       <input type="text" id="coTxnId" placeholder="Enter your transaction ID">
     </div>
+    <div id="coOrderSummary" style="margin-bottom:18px"></div>
     <button class="co-submit" onclick="submitOrder()">Place Order</button>
   </div>
 </div>
@@ -442,7 +458,5 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 <script src="script.js"></script>
-  
-</script>
 </body>
 </html>
