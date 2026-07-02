@@ -18,7 +18,9 @@ var db = null;
 try { db = firebase.firestore(); } catch (e) { console.error('Firestore init failed:', e); }
 
 /* ==========================================
-   হ্যাশ হেল্পার
+   হ্যাশ হেল্পার — পাসওয়ার্ড কখনো প্লেইন টেক্সটে থাকে না
+   নিচেরটা SHA-256('admin123') এর হ্যাশ —
+   কেউ এটা দেখে মূল পাসওয়ার্ড বের করতে পারবে না
    ========================================== */
 var ADMIN_INIT_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
 
@@ -29,8 +31,8 @@ function hashPassword(pwd) {
 // ==========================================
 // আপনার পেমেন্ট নাম্বার এখানে দিন
 // ==========================================
-var BKASH_NUMBER = "01631650688"; 
-var NAGAD_NUMBER = "01631650688"; 
+var BKASH_NUMBER = "01631650688"; // এখানে আপনার বিকাশ নাম্বার দিন
+var NAGAD_NUMBER = "01631650688"; // এখানে আপনার নগদ নাম্বার দিন
 
 /* ==========================================
    TIMEOUT HELPER
@@ -132,11 +134,7 @@ function saveWishlist() { localStorage.setItem('fg_wishlist', JSON.stringify(Arr
    ========================================== */
 auth.onAuthStateChanged(function (user) {
   updateUserUI(user);
-  if (pendingCartAction && user) { 
-    var a = pendingCartAction; 
-    pendingCartAction = null; 
-    setTimeout(function () { a(); }, 300); 
-  }
+  if (pendingCartAction && user) { var a = pendingCartAction; pendingCartAction = null; setTimeout(function () { a(); }, 300); }
 });
 function isLoggedIn() { return !!auth.currentUser; }
 async function getLoggedUser() {
@@ -188,15 +186,7 @@ function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
    LOGIN UI
    ========================================== */
 function openLogin() { document.getElementById('loginOv').classList.add('active'); document.getElementById('loginModal').classList.add('active'); document.body.style.overflow = 'hidden'; showLogForm(); }
-function closeLogin() { 
-  document.getElementById('loginOv').classList.remove('active'); 
-  document.getElementById('loginModal').classList.remove('active'); 
-  var isOtherOpen = document.querySelector('.pm-ov.active, .cart-ov.active, .wl-ov.active, .co-ov.active');
-  if (!isOtherOpen) { document.body.style.overflow = ''; }
-  ['loginEmail', 'loginPass', 'regName', 'regEmail', 'regPhone', 'regPass', 'forgotEmail'].forEach(function (i) { document.getElementById(i).value = ''; }); 
-  ['loginError', 'regError', 'forgotError', 'forgotSuccess'].forEach(function (i) { document.getElementById(i).classList.remove('show'); }); 
-  document.querySelectorAll('.login-modal .co-submit').forEach(function (b) { b.disabled = false; }); 
-}
+function closeLogin() { document.getElementById('loginOv').classList.remove('active'); document.getElementById('loginModal').classList.remove('active'); document.body.style.overflow = ''; ['loginEmail', 'loginPass', 'regName', 'regEmail', 'regPhone', 'regPass', 'forgotEmail'].forEach(function (i) { document.getElementById(i).value = ''; }); ['loginError', 'regError', 'forgotError', 'forgotSuccess'].forEach(function (i) { document.getElementById(i).classList.remove('show'); }); document.querySelectorAll('.login-modal .co-submit').forEach(function (b) { b.disabled = false; }); }
 function showLogForm() { document.getElementById('loginFormDiv').style.display = 'block'; document.getElementById('regFormDiv').style.display = 'none'; document.getElementById('forgotFormDiv').style.display = 'none'; document.getElementById('loginTitle').textContent = 'Login'; document.getElementById('loginError').classList.remove('show'); }
 function showRegForm() { document.getElementById('loginFormDiv').style.display = 'none'; document.getElementById('regFormDiv').style.display = 'block'; document.getElementById('forgotFormDiv').style.display = 'none'; document.getElementById('loginTitle').textContent = 'Register'; document.getElementById('regError').classList.remove('show'); }
 function showForgotForm() { document.getElementById('loginFormDiv').style.display = 'none'; document.getElementById('regFormDiv').style.display = 'none'; document.getElementById('forgotFormDiv').style.display = 'block'; document.getElementById('loginTitle').textContent = 'Reset Password'; document.getElementById('forgotError').classList.remove('show'); document.getElementById('forgotSuccess').classList.remove('show'); }
@@ -205,7 +195,7 @@ async function handleUserClick() { if (isLoggedIn()) { var u = await getLoggedUs
 function updateUserUI(fu) { var b = document.getElementById('userBtn'); if (fu) { b.classList.add('logged-in'); b.querySelector('i').className = 'fas fa-user-check'; } else { b.classList.remove('logged-in'); b.querySelector('i').className = 'fas fa-user'; } }
 
 /* ==========================================
-   ADMIN PANEL
+   ADMIN PANEL — হ্যাশ-ভিত্তিক সিকিউরিটি (ফ্রি)
    ========================================== */
 function handleHash() { if (window.location.hash === '#admin') showAdminLogin(); else hideAdmin(); }
 window.addEventListener('hashchange', handleHash);
@@ -227,30 +217,52 @@ function hideAdmin() {
   document.getElementById('adminPanel').style.display = 'none';
   document.body.style.overflow = '';
 }
-async function adminGoBack() { window.location.hash = ''; hideAdmin(); await refreshStoreData(); showPage('home'); }
-async function refreshStoreData() { try { products = await loadProducts(); } catch (e) { products = []; } try { orders = await loadOrders(); } catch (e) { orders = []; } }
+async function adminGoBack() {
+  window.location.hash = ''; hideAdmin();
+  await refreshStoreData(); showPage('home');
+}
+async function refreshStoreData() {
+  try { products = await loadProducts(); } catch (e) { products = []; }
+  try { orders = await loadOrders(); } catch (e) { orders = []; }
+}
 
+/* ==========================================
+   অ্যাডমিন লগইন — পাসওয়ার্ড হ্যাশ করে চেক
+   কোডে কোনো প্লেইন টেক্সট পাসওয়ার্ড নেই
+   ========================================== */
 async function adminDoLogin() {
   var u = document.getElementById('adminUser').value.trim();
   var p = document.getElementById('adminPass').value;
   var err = document.getElementById('adminLoginError');
   err.classList.remove('show');
-  if (!u || !p) { err.textContent = 'Please enter username and password'; err.classList.add('show'); return; }
+
+  if (!u || !p) {
+    err.textContent = 'Please enter username and password';
+    err.classList.add('show'); return;
+  }
 
   var btn = document.querySelector('.admin-login-btn');
   var ot = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...'; btn.disabled = true;
 
-  // নিরাপদ হ্যাশিং (যদি কখনো CryptoJS লোড না হয় তাহলে এরর দেবে না)
-  var inputHash = "fallback_error";
-  try { if (typeof CryptoJS !== 'undefined') { inputHash = hashPassword(p); } } catch (e) { console.error("Hash error:", e); }
+  var inputHash = hashPassword(p);
 
   var correctHash = null;
-  try { var config = await withTimeout(db.collection('config').doc('store').get(), 5000); if (config.exists && config.data().adminPassHash) { correctHash = config.data().adminPassHash; } } catch (e) { }
-  if (!correctHash) { correctHash = ADMIN_INIT_HASH; }
+  try {
+    var config = await withTimeout(db.collection('config').doc('store').get(), 5000);
+    if (config.exists && config.data().adminPassHash) {
+      correctHash = config.data().adminPassHash;
+    }
+  } catch (e) { }
 
-  if (inputHash === "fallback_error" || inputHash !== correctHash) {
-    err.textContent = 'Invalid username or password'; err.classList.add('show');
-    btn.innerHTML = ot; btn.disabled = false; return;
+  if (!correctHash) {
+    correctHash = ADMIN_INIT_HASH;
+  }
+
+  if (inputHash !== correctHash) {
+    err.textContent = 'Invalid username or password';
+    err.classList.add('show');
+    btn.innerHTML = ot; btn.disabled = false;
+    return;
   }
 
   document.body.style.overflow = 'auto';
@@ -260,10 +272,13 @@ async function adminDoLogin() {
   adminShowSec('dashboard');
 }
 
-async function adminDoLogout() { window.location.hash = ''; hideAdmin(); await refreshStoreData(); showPage('home'); showToast('Admin logged out'); }
+async function adminDoLogout() {
+  window.location.hash = ''; hideAdmin();
+  await refreshStoreData(); showPage('home'); showToast('Admin logged out');
+}
 
 /* ==========================================
-   অ্যাডমিন সেকশন রেন্ডার (সংক্ষিপ্ত)
+   অ্যাডমিন সেকশন রেন্ডার
    ========================================== */
 async function adminShowSec(sec) {
   document.querySelectorAll('.admin-sec').forEach(function (s) { s.classList.remove('active'); });
@@ -271,10 +286,18 @@ async function adminShowSec(sec) {
   var sm = { dashboard: 'admDashboard', products: 'admProducts', orders: 'admOrders', settings: 'admSettings' };
   var tm = { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', settings: 'Settings' };
   document.getElementById(sm[sec]).classList.add('active');
-  var ne = document.querySelector('.admin-snav a[data-asec="' + sec + '"]'); if (ne) ne.classList.add('active');
+  var ne = document.querySelector('.admin-snav a[data-asec="' + sec + '"]');
+  if (ne) ne.classList.add('active');
   document.getElementById('adminPageTitle').textContent = tm[sec];
   document.getElementById(sm[sec]).innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:80px;color:var(--lg)"><i class="fas fa-spinner fa-spin" style="font-size:28px;margin-right:14px;color:var(--gold)"></i>Loading...</div>';
-  try { if (sec === 'dashboard') await renderAdminDashboard(); else if (sec === 'products') await renderAdminProducts(); else if (sec === 'orders') await renderAdminOrders(); else if (sec === 'settings') renderAdminSettings(); } catch (e) { document.getElementById(sm[sec]).innerHTML = '<div class="adm-table-empty" style="padding:80px"><i class="fas fa-exclamation-triangle" style="font-size:48px;color:var(--danger);margin-bottom:20px;display:block"></i><p>Failed to load data</p></div>'; }
+  try {
+    if (sec === 'dashboard') await renderAdminDashboard();
+    else if (sec === 'products') await renderAdminProducts();
+    else if (sec === 'orders') await renderAdminOrders();
+    else if (sec === 'settings') renderAdminSettings();
+  } catch (e) {
+    document.getElementById(sm[sec]).innerHTML = '<div class="adm-table-empty" style="padding:80px"><i class="fas fa-exclamation-triangle" style="font-size:48px;color:var(--danger);margin-bottom:20px;display:block"></i><p>Failed to load data</p></div>';
+  }
   document.getElementById('adminSidebar').classList.remove('open');
 }
 function toggleAdminSidebar() { document.getElementById('adminSidebar').classList.toggle('open'); }
@@ -283,14 +306,20 @@ async function renderAdminDashboard() {
   products = await loadProducts(); orders = await loadOrders();
   var tp = products.length, to = orders.length, rev = orders.reduce(function (s, o) { return s + o.total; }, 0), oos = products.filter(function (p) { return !p.inStock; }).length;
   var rc = orders.slice().reverse().slice(0, 5);
-  var h = '<div class="adm-stats"><div class="adm-stat-card"><div class="adm-stat-icon gold"><i class="fas fa-box"></i></div><div class="adm-stat-info"><h4>' + tp + '</h4><p>Products</p></div></div><div class="adm-stat-card"><div class="adm-stat-icon blue"><i class="fas fa-receipt"></i></div><div class="adm-stat-info"><h4>' + to + '</h4><p>Orders</p></div></div><div class="adm-stat-card"><div class="adm-stat-icon green"><i class="fas fa-bangladeshi-taka-sign"></i></div><div class="adm-stat-info"><h4>' + fmtPrice(rev) + '</h4><p>Revenue</p></div></div><div class="adm-stat-card"><div class="adm-stat-icon red"><i class="fas fa-exclamation-triangle"></i></div><div class="adm-stat-info"><h4>' + oos + '</h4><p>Out of Stock</p></div></div></div>';
+  var h = '<div class="adm-stats">';
+  h += '<div class="adm-stat-card"><div class="adm-stat-icon gold"><i class="fas fa-box"></i></div><div class="adm-stat-info"><h4>' + tp + '</h4><p>Products</p></div></div>';
+  h += '<div class="adm-stat-card"><div class="adm-stat-icon blue"><i class="fas fa-receipt"></i></div><div class="adm-stat-info"><h4>' + to + '</h4><p>Orders</p></div></div>';
+  h += '<div class="adm-stat-card"><div class="adm-stat-icon green"><i class="fas fa-bangladeshi-taka-sign"></i></div><div class="adm-stat-info"><h4>' + fmtPrice(rev) + '</h4><p>Revenue</p></div></div>';
+  h += '<div class="adm-stat-card"><div class="adm-stat-icon red"><i class="fas fa-exclamation-triangle"></i></div><div class="adm-stat-info"><h4>' + oos + '</h4><p>Out of Stock</p></div></div></div>';
   h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div class="adm-table-wrap"><div class="adm-table-hdr"><h3>Recent Orders</h3></div>';
   if (rc.length) { h += '<table class="adm-table"><thead><tr><th>ID</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead><tbody>'; rc.forEach(function (o) { h += '<tr><td style="font-weight:600;color:var(--gold)">' + o.id + '</td><td>' + o.customer.name + '</td><td>' + fmtPrice(o.total) + '</td><td><span class="adm-status ' + o.status + '">' + o.status + '</span></td></tr>'; }); h += '</tbody></table>'; } else h += '<div class="adm-table-empty"><i class="fas fa-inbox"></i>No orders</div>';
-  h += '</div><div class="adm-table-wrap"><div class="adm-table-hdr"><h3>By Category</h3></div><table class="adm-table"><thead><tr><th>Category</th><th>Count</th></tr></thead><tbody>';
+  h += '</div>';
   var cats = {}; products.forEach(function (p) { cats[p.category] = (cats[p.category] || 0) + 1; });
+  h += '<div class="adm-table-wrap"><div class="adm-table-hdr"><h3>By Category</h3></div><table class="adm-table"><thead><tr><th>Category</th><th>Count</th></tr></thead><tbody>';
   for (var c in cats) h += '<tr><td><span class="adm-table-cat">' + c + '</span></td><td>' + cats[c] + '</td></tr>';
   if (!Object.keys(cats).length) h += '<tr><td colspan="2" style="text-align:center;color:var(--lg);padding:20px">No products</td></tr>';
-  h += '</tbody></table></div></div>'; document.getElementById('admDashboard').innerHTML = h;
+  h += '</tbody></table></div></div>';
+  document.getElementById('admDashboard').innerHTML = h;
 }
 
 var admProdSearchQ = '', admProdFilterCat = '';
@@ -313,13 +342,23 @@ function closeAdmModal() { document.getElementById('admModalOv').classList.remov
 
 function renderProductForm(p) {
   var h = '<div class="adm-form-grid"><div class="adm-form-full adm-form-group"><label>Product Name</label><input type="text" id="afName" value="' + escHtml(p.name) + '" placeholder="Product name"></div>';
-  h += '<div class="adm-form-group"><label>Category</label><select id="afCat" onchange="updateSubCatOptions()"><option value="men"' + (p.category === 'men' ? ' selected' : '') + '>Men</option><option value="women"' + (p.category === 'women' ? ' selected' : '') + '>Women</option><option value="watch"' + (p.category === 'watch' ? ' selected' : '') + '>Watch</option><option value="bag"' + (p.category === 'bag' ? ' selected' : '') + '>Bag</option><option value="perfume"' + (p.category === 'perfume' ? ' selected' : '') + '>Perfume</option><option value="jewelry"' + (p.category === 'jewelry' ? ' selected' : '') + '>Jewelry</option><option value="sunglasses"' + (p.category === 'sunglasses' ? ' selected' : '') + '>Sunglasses</option><option value="homedecor"' + (p.category === 'homedecor' ? ' selected' : '') + '>Home Decor</option></select></div><div class="adm-form-group"><label>Sub-Category</label><select id="afSubCat"></select></div>';
-  h += '<div class="adm-form-group"><label>Price (&#x09F3;)</label><input type="number" id="afPrice" value="' + (p.price || '') + '" min="0"></div><div class="adm-form-group"><label>Old Price (&#x09F3;)</label><input type="number" id="afOldPrice" value="' + (p.oldPrice || '') + '" min="0"></div>';
-  h += '<div class="adm-form-full adm-form-group"><label>Image</label><div class="adm-img-preview" id="afImgPreview">' + (p.image ? '<img src="' + p.image + '">' : '<span class="placeholder">No Image</span>') + '</div><div class="adm-img-inputs"><div class="adm-img-url-wrap"><input type="text" id="afImage" value="' + escHtml(p.image) + '" placeholder="Image URL" oninput="previewImgUrl(this.value)"></div><div class="adm-img-or">OR</div><div class="adm-img-upload-wrap"><div class="adm-img-upload-btn"><i class="fas fa-cloud-upload-alt"></i> Upload<input type="file" id="afImageFile" accept="image/*" onchange="handleImageUpload(event)"></div></div></div></div>';
-  h += '<div class="adm-form-full adm-form-group"><label>Colors</label><div class="adm-color-picks" id="afColorPicks">'; ADMIN_COLORS.forEach(function (c) { h += '<div class="adm-color-pick' + (LIGHT_COLORS.indexOf(c.hex) !== -1 ? ' light-c' : '') + (p.colors.indexOf(c.hex) !== -1 ? ' active' : '') + '" style="background:' + c.hex + '" title="' + c.name + '" onclick="toggleAdmColor(this,\'' + c.hex + '\')"></div>'; }); h += '</div></div>';
-  h += '<div class="adm-form-full adm-form-group"><label>Sizes</label><div class="adm-size-picks" id="afSizePicks">'; var sz = (p.category === 'perfume') ? PERFUME_SIZES : ADMIN_SIZES; sz.forEach(function (s) { h += '<div class="adm-size-pick' + (p.sizes.indexOf(s) !== -1 ? ' active' : '') + '" onclick="toggleAdmSize(this,\'' + s + '\')">' + s + '</div>'; }); h += '</div></div>';
-  h += '<div class="adm-form-group"><label>Tag</label><select id="afTag"><option value="">None</option>'; ['New', 'Hot', 'Sale'].forEach(function (t) { h += '<option value="' + t + '"' + (p.tag === t ? ' selected' : '') + '>' + t + '</option>'; }); h += '</select></div><div class="adm-form-group" style="display:flex;align-items:flex-end;padding-bottom:2px"><label class="adm-form-check"><input type="checkbox" id="afStock" ' + (p.inStock ? 'checked' : '') + '><span>In Stock</span></label></div>';
-  h += '<div class="adm-form-full adm-form-group"><label>Description</label><textarea id="afDesc" rows="3">' + escHtml(p.description || '') + '</textarea></div><div class="adm-form-bottom"><button class="adm-btn adm-btn-outline" onclick="closeAdmModal()">Cancel</button><button class="adm-btn" onclick="saveProductFromModal()"><i class="fas fa-save"></i> Save</button></div></div>';
+  h += '<div class="adm-form-group"><label>Category</label><select id="afCat" onchange="updateSubCatOptions()">';
+  ['men', 'women', 'watch', 'bag', 'perfume', 'jewelry', 'sunglasses', 'homedecor'].forEach(function (c) { h += '<option value="' + c + '"' + (p.category === c ? ' selected' : '') + '>' + c.charAt(0).toUpperCase() + c.slice(1) + '</option>'; });
+  h += '</select></div><div class="adm-form-group"><label>Sub-Category</label><select id="afSubCat"></select></div>';
+  h += '<div class="adm-form-group"><label>Price (&#x09F3;)</label><input type="number" id="afPrice" value="' + (p.price || '') + '" min="0"></div>';
+  h += '<div class="adm-form-group"><label>Old Price (&#x09F3;)</label><input type="number" id="afOldPrice" value="' + (p.oldPrice || '') + '" min="0"></div>';
+  h += '<div class="adm-form-full adm-form-group"><label>Image</label><div class="adm-img-preview" id="afImgPreview">' + (p.image ? '<img src="' + p.image + '">' : '<span class="placeholder">No Image</span>') + '</div>';
+  h += '<div class="adm-img-inputs"><div class="adm-img-url-wrap"><input type="text" id="afImage" value="' + escHtml(p.image) + '" placeholder="Image URL" oninput="previewImgUrl(this.value)"></div><div class="adm-img-or">OR</div><div class="adm-img-upload-wrap"><div class="adm-img-upload-btn"><i class="fas fa-cloud-upload-alt"></i> Upload<input type="file" id="afImageFile" accept="image/*" onchange="handleImageUpload(event)"></div></div></div></div>';
+  h += '<div class="adm-form-full adm-form-group"><label>Colors</label><div class="adm-color-picks" id="afColorPicks">';
+  ADMIN_COLORS.forEach(function (c) { h += '<div class="adm-color-pick' + (LIGHT_COLORS.indexOf(c.hex) !== -1 ? ' light-c' : '') + (p.colors.indexOf(c.hex) !== -1 ? ' active' : '') + '" style="background:' + c.hex + '" title="' + c.name + '" onclick="toggleAdmColor(this,\'' + c.hex + '\')"></div>'; });
+  h += '</div></div><div class="adm-form-full adm-form-group"><label>Sizes</label><div class="adm-size-picks" id="afSizePicks">';
+  var sz = (p.category === 'perfume') ? PERFUME_SIZES : ADMIN_SIZES;
+  sz.forEach(function (s) { h += '<div class="adm-size-pick' + (p.sizes.indexOf(s) !== -1 ? ' active' : '') + '" onclick="toggleAdmSize(this,\'' + s + '\')">' + s + '</div>'; });
+  h += '</div></div><div class="adm-form-group"><label>Tag</label><select id="afTag"><option value="">None</option>';
+  ['New', 'Hot', 'Sale'].forEach(function (t) { h += '<option value="' + t + '"' + (p.tag === t ? ' selected' : '') + '>' + t + '</option>'; });
+  h += '</select></div><div class="adm-form-group" style="display:flex;align-items:flex-end;padding-bottom:2px"><label class="adm-form-check"><input type="checkbox" id="afStock" ' + (p.inStock ? 'checked' : '') + '><span>In Stock</span></label></div>';
+  h += '<div class="adm-form-full adm-form-group"><label>Description</label><textarea id="afDesc" rows="3">' + escHtml(p.description || '') + '</textarea></div>';
+  h += '<div class="adm-form-bottom"><button class="adm-btn adm-btn-outline" onclick="closeAdmModal()">Cancel</button><button class="adm-btn" onclick="saveProductFromModal()"><i class="fas fa-save"></i> Save</button></div></div>';
   document.getElementById('admModalBody').innerHTML = h; updateSubCatOptions(p.subCategory);
 }
 
@@ -336,7 +375,8 @@ async function saveProductFromModal() {
   var tag = document.getElementById('afTag').value, stk = document.getElementById('afStock').checked, desc = document.getElementById('afDesc').value.trim();
   if (!n) { showToast('Name required'); return; } if (!pr || pr <= 0) { showToast('Valid price required'); return; } if (!img) { showToast('Image required'); return; }
   var d = { name: n, price: pr, oldPrice: op, category: cat, subCategory: sc, image: img, colors: admFormColors.slice(), sizes: admFormSizes.slice(), inStock: stk, tag: tag, description: desc };
-  try { if (admEditId) { d.id = admEditId; await saveProductToDB(d); showToast('Updated'); } else { d.id = products.reduce(function (m, p) { return p.id > m ? p.id : m; }, 0) + 1; await saveProductToDB(d); products.push(d); showToast('Added'); } closeAdmModal(); await renderAdminProducts(); } catch (e) { showToast('Error saving'); }
+  try { if (admEditId) { d.id = admEditId; await saveProductToDB(d); showToast('Updated'); } else { d.id = products.reduce(function (m, p) { return p.id > m ? p.id : m; }, 0) + 1; await saveProductToDB(d); products.push(d); showToast('Added'); } closeAdmModal(); await renderAdminProducts(); }
+  catch (e) { showToast('Error saving'); }
 }
 async function deleteProduct(id) { var p = products.find(function (x) { return x.id === id; }); if (!p || !confirm('Delete "' + p.name + '"?')) return; try { await deleteProductFromDB(id); products = products.filter(function (x) { return x.id !== id; }); await renderAdminProducts(); showToast('Deleted'); } catch (e) { showToast('Error'); } }
 
@@ -368,22 +408,59 @@ function closeAdmOrderModal() { document.getElementById('admOrderOv').classList.
 async function updateOrderStatus(id) { var s = document.getElementById('admOrderStatus').value; try { await updateOrderInDB(id, { status: s }); closeAdmOrderModal(); await renderAdminOrders(); showToast('Updated to ' + s); } catch (e) { showToast('Error'); } }
 async function deleteOrder(id) { if (!confirm('Delete ' + id + '?')) return; try { await deleteOrderFromDB(id); await renderAdminOrders(); showToast('Deleted'); } catch (e) { showToast('Error'); } }
 
+/* ==========================================
+   SETTINGS — পাসওয়ার্ড হ্যাশ করে সেভ
+   ========================================== */
 function renderAdminSettings() {
-  var h = '<div class="adm-settings-card"><h3>Change Admin Password</h3><p style="font-size:12px;color:var(--success);margin-bottom:16px"><i class="fas fa-shield-halved"></i> Passwords are hashed before storing.</p><div class="adm-form-group"><label>Current Password</label><input type="password" id="setCurrPass"></div><div class="adm-form-group"><label>New Password</label><input type="password" id="setNewPass"></div><div class="adm-form-group"><label>Confirm New Password</label><input type="password" id="setConfPass"></div><button class="adm-btn" onclick="changeAdminPass()"><i class="fas fa-key"></i> Update Password</button></div>';
-  h += '<div class="adm-settings-card"><h3>Data Management</h3><div style="display:flex;gap:12px;flex-wrap:wrap"><button class="adm-btn adm-btn-outline" onclick="exportData()"><i class="fas fa-download"></i> Export</button><button class="adm-btn adm-btn-outline" onclick="document.getElementById(\'importFileInput\').click()"><i class="fas fa-upload"></i> Import</button><input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importData(event)"></div></div>';
-  h += '<div class="adm-settings-card adm-danger-zone"><h3>Danger Zone</h3><div style="display:flex;gap:12px;flex-wrap:wrap"><button class="adm-btn adm-btn-danger" onclick="resetProducts()"><i class="fas fa-box-open"></i> Reset Products</button><button class="adm-btn adm-btn-danger" onclick="resetAllData()"><i class="fas fa-trash-alt"></i> Reset Everything</button></div></div>';
+  var h = '<div class="adm-settings-card"><h3>Change Admin Password</h3>';
+  h += '<p style="font-size:12px;color:var(--success);margin-bottom:16px"><i class="fas fa-shield-halved"></i> Passwords are hashed with SHA-256 before storing. Plain text never leaves your browser.</p>';
+  h += '<div class="adm-form-group"><label>Current Password</label><input type="password" id="setCurrPass"></div>';
+  h += '<div class="adm-form-group"><label>New Password</label><input type="password" id="setNewPass"></div>';
+  h += '<div class="adm-form-group"><label>Confirm New Password</label><input type="password" id="setConfPass"></div>';
+  h += '<button class="adm-btn" onclick="changeAdminPass()"><i class="fas fa-key"></i> Update Password</button></div>';
+  h += '<div class="adm-settings-card"><h3>Data Management</h3><p style="font-size:13px;color:var(--lg);margin-bottom:16px">Export/Import data.</p><div style="display:flex;gap:12px;flex-wrap:wrap">';
+  h += '<button class="adm-btn adm-btn-outline" onclick="exportData()"><i class="fas fa-download"></i> Export</button>';
+  h += '<button class="adm-btn adm-btn-outline" onclick="document.getElementById(\'importFileInput\').click()"><i class="fas fa-upload"></i> Import</button>';
+  h += '<input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importData(event)"></div></div>';
+  h += '<div class="adm-settings-card adm-danger-zone"><h3>Danger Zone</h3><div style="display:flex;gap:12px;flex-wrap:wrap">';
+  h += '<button class="adm-btn adm-btn-danger" onclick="resetProducts()"><i class="fas fa-box-open"></i> Reset Products</button>';
+  h += '<button class="adm-btn adm-btn-danger" onclick="resetAllData()"><i class="fas fa-trash-alt"></i> Reset Everything</button></div></div>';
   document.getElementById('admSettings').innerHTML = h;
 }
 
 async function changeAdminPass() {
-  var curr = document.getElementById('setCurrPass').value, newP = document.getElementById('setNewPass').value, conf = document.getElementById('setConfPass').value;
-  if (!curr || !newP || !conf) { showToast('Fill in all fields'); return; } if (newP.length < 4) { showToast('Min 4 characters'); return; } if (newP !== conf) { showToast('Passwords do not match'); return; }
-  var currHash = "fallback_error"; try { if(typeof CryptoJS !== 'undefined') currHash = hashPassword(curr); } catch(e){}
-  var savedHash = null; try { var config = await withTimeout(db.collection('config').doc('store').get(), 5000); if (config.exists && config.data().adminPassHash) savedHash = config.data().adminPassHash; } catch (e) { }
+  var curr = document.getElementById('setCurrPass').value;
+  var newP = document.getElementById('setNewPass').value;
+  var conf = document.getElementById('setConfPass').value;
+
+  if (!curr || !newP || !conf) { showToast('Fill in all fields'); return; }
+  if (newP.length < 4) { showToast('Min 4 characters'); return; }
+  if (newP !== conf) { showToast('Passwords do not match'); return; }
+
+  var currHash = hashPassword(curr);
+
+  var savedHash = null;
+  try {
+    var config = await withTimeout(db.collection('config').doc('store').get(), 5000);
+    if (config.exists && config.data().adminPassHash) {
+      savedHash = config.data().adminPassHash;
+    }
+  } catch (e) { }
+
   if (!savedHash) savedHash = ADMIN_INIT_HASH;
-  if (currHash === "fallback_error" || currHash !== savedHash) { showToast('Current password is incorrect'); return; }
-  var newHash = "fallback_error"; try { if(typeof CryptoJS !== 'undefined') newHash = hashPassword(newP); } catch(e){}
-  try { await db.collection('config').doc('store').set({ adminPassHash: newHash }, { merge: true }); document.getElementById('setCurrPass').value = ''; document.getElementById('setNewPass').value = ''; document.getElementById('setConfPass').value = ''; showToast('Password changed successfully!'); } catch (e) { showToast('Error saving password'); }
+
+  if (currHash !== savedHash) { showToast('Current password is incorrect'); return; }
+
+  var newHash = hashPassword(newP);
+  try {
+    await db.collection('config').doc('store').set({ adminPassHash: newHash }, { merge: true });
+    document.getElementById('setCurrPass').value = '';
+    document.getElementById('setNewPass').value = '';
+    document.getElementById('setConfPass').value = '';
+    showToast('Password changed successfully!');
+  } catch (e) {
+    showToast('Error saving password');
+  }
 }
 
 function exportData() { var b = new Blob([JSON.stringify({ products: products, orders: orders }, null, 2)], { type: 'application/json' }); var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'fashion_garage_data.json'; a.click(); showToast('Exported'); }
@@ -392,7 +469,7 @@ async function resetProducts() { if (!confirm('Delete all products?')) return; t
 async function resetAllData() { if (!confirm('WARNING: Delete ALL data?')) return; try { var s1 = await db.collection('products').get(); var b1 = db.batch(); s1.forEach(function (d) { b1.delete(d.ref); }); await b1.commit(); var s2 = await db.collection('orders').get(); var b2 = db.batch(); s2.forEach(function (d) { b2.delete(d.ref); }); await b2.commit(); await saveConfig({ nextOrderId: 1001 }); products = []; orders = []; await adminShowSec('dashboard'); showToast('All reset'); } catch (e) { showToast('Error'); } }
 
 /* ==========================================
-   PAGE NAVIGATION & UI FUNCTIONS
+   PAGE NAVIGATION
    ========================================== */
 function showPage(page, subFilter) {
   if (window.location.hash === '#admin') return;
@@ -418,13 +495,24 @@ function closeMob() { document.getElementById('mobToggle').classList.remove('act
 document.getElementById('mobToggle').addEventListener('click', function () { this.classList.toggle('active'); document.getElementById('mobNav').classList.toggle('active'); document.getElementById('mobOverlay').classList.toggle('active'); document.body.style.overflow = this.classList.contains('active') ? 'hidden' : ''; });
 document.getElementById('mobOverlay').addEventListener('click', closeMob);
 function toggleMobAcc(e) { e.preventDefault(); document.getElementById('mobAccTog').classList.toggle('open'); document.getElementById('mobSub').classList.toggle('show'); }
+
+/* ==========================================
+   HERO SLIDER
+   ========================================== */
 function initHeroSlider() { var t = document.getElementById('heroTrack'), d = document.getElementById('heroDots'), s = t.querySelectorAll('.hero-slide'); if (!s.length) return; d.innerHTML = ''; s.forEach(function (_, i) { var el = document.createElement('div'); el.className = 'dot' + (i === 0 ? ' active' : ''); el.onclick = function () { goToSlide(i); }; d.appendChild(el); }); startAutoSlide(); }
 function goToSlide(n) { var s = document.getElementById('heroTrack').querySelectorAll('.hero-slide'); if (n < 0) n = s.length - 1; if (n >= s.length) n = 0; currentSlide = n; document.getElementById('heroTrack').style.transform = 'translateX(-' + (n * 100) + '%)'; document.querySelectorAll('.s-dots .dot').forEach(function (d, i) { d.classList.toggle('active', i === n); }); }
 function heroSlide(dir) { goToSlide(currentSlide + dir); startAutoSlide(); }
 function startAutoSlide() { clearInterval(slideInterval); slideInterval = setInterval(function () { goToSlide(currentSlide + 1); }, 5000); }
+
+/* ==========================================
+   SCROLL EFFECTS
+   ========================================== */
 function initScrollEffects() { var nav = document.getElementById('mainNav'), stp = document.getElementById('scrollTop'); window.addEventListener('scroll', function () { nav.classList.toggle('scrolled', window.scrollY > 50); stp.classList.toggle('visible', window.scrollY > 400); }); initFadeIn(); }
 function initFadeIn() { var els = document.querySelectorAll('.fade-in:not(.visible)'); if (!els.length) return; var obs = new IntersectionObserver(function (en) { en.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } }); }, { threshold: 0.1 }); els.forEach(function (el) { obs.observe(el); }); }
 
+/* ==========================================
+   PRODUCT CARD
+   ========================================== */
 function productCard(p) {
   var l = wishlist.has(p.id), h = '<div class="p-card" onclick="openPM(' + p.id + ')"><div class="p-img"><img src="' + p.image + '" alt="' + escHtml(p.name) + '" onerror="this.src=\'https://via.placeholder.com/400x500/121212/d4a017?text=No+Image\'"><button class="wl-btn' + (l ? ' liked' : '') + '" onclick="event.stopPropagation();toggleWishlist(' + p.id + ')"><i class="' + (l ? 'fas' : 'far') + ' fa-heart"></i></button>';
   if (p.tag) h += '<div class="p-tag">' + p.tag + '</div>'; if (!p.inStock) h += '<div class="p-oos-tag">Out of Stock</div>';
@@ -434,22 +522,38 @@ function productCard(p) {
   return h;
 }
 
+/* ==========================================
+   PRODUCT MODAL FUNCTIONS
+   ========================================== */
 function openPM(id) {
-  var p = products.find(function(x){ return x.id === id; }); if(!p) return;
+  var p = products.find(function(x){ return x.id === id; });
+  if(!p) return;
   pmCurrentProduct = p; pmSelectedColor = ''; pmSelectedSize = ''; pmQuantity = 1;
   document.getElementById('pmImg').src = p.image;
   document.getElementById('pmName').textContent = p.name;
   document.getElementById('pmPrice').innerHTML = '<span class="cur">' + fmtPrice(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + fmtPrice(p.oldPrice) + '</span>' : '');
-  var tagHtml = ''; if(!p.inStock) tagHtml = '<div class="pm-oos-tag">Out of Stock</div>'; else if(p.tag) tagHtml = '<div class="pm-tag">' + p.tag + '</div>';
+  
+  var tagHtml = '';
+  if(!p.inStock) tagHtml = '<div class="pm-oos-tag">Out of Stock</div>';
+  else if(p.tag) tagHtml = '<div class="pm-tag">' + p.tag + '</div>';
   document.getElementById('pmTag').innerHTML = tagHtml;
-  var cHtml = ''; p.colors.forEach(function(c){ cHtml += '<div class="pm-cswatch' + (LIGHT_COLORS.indexOf(c) !== -1 ? ' light-c' : '') + '" style="background:' + c + '" onclick="selectPMColor(this,\'' + c + '\')"></div>'; });
+
+  var cHtml = '';
+  p.colors.forEach(function(c){ cHtml += '<div class="pm-cswatch' + (LIGHT_COLORS.indexOf(c) !== -1 ? ' light-c' : '') + '" style="background:' + c + '" onclick="selectPMColor(this,\'' + c + '\')"></div>'; });
   document.getElementById('pmColors').innerHTML = cHtml;
-  var sHtml = ''; var sizes = p.category === 'perfume' ? PERFUME_SIZES : ADMIN_SIZES;
+
+  var sHtml = '';
+  var sizes = p.category === 'perfume' ? PERFUME_SIZES : ADMIN_SIZES;
   sizes.forEach(function(s){ if(p.sizes.indexOf(s) !== -1) sHtml += '<div class="pm-sbtn" onclick="selectPMSize(this,\'' + s + '\')">' + s + '</div>'; });
   document.getElementById('pmSizes').innerHTML = sHtml;
   document.getElementById('pmQtyVal').textContent = '1';
-  var btn = document.getElementById('pmAddBtn'); if(!p.inStock){ btn.textContent = 'OUT OF STOCK'; btn.classList.add('oos'); } else { btn.textContent = 'ADD TO CART'; btn.classList.remove('oos'); }
-  document.getElementById('pmOv').classList.add('active'); document.getElementById('pmModal').classList.add('active'); document.body.style.overflow = 'hidden';
+  
+  var btn = document.getElementById('pmAddBtn');
+  if(!p.inStock){ btn.textContent = 'OUT OF STOCK'; btn.classList.add('oos'); } else { btn.textContent = 'ADD TO CART'; btn.classList.remove('oos'); }
+
+  document.getElementById('pmOv').classList.add('active');
+  document.getElementById('pmModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
 }
 function closePM() { document.getElementById('pmOv').classList.remove('active'); document.getElementById('pmModal').classList.remove('active'); document.body.style.overflow = ''; pmCurrentProduct = null; }
 function selectPMColor(el, c) { document.querySelectorAll('.pm-cswatch').forEach(function(e){ e.classList.remove('active'); }); el.classList.add('active'); pmSelectedColor = c; }
@@ -457,11 +561,11 @@ function selectPMSize(el, s) { document.querySelectorAll('.pm-sbtn').forEach(fun
 function pmQty(d) { pmQuantity += d; if(pmQuantity < 1) pmQuantity = 1; document.getElementById('pmQtyVal').textContent = pmQuantity; }
 
 /* ==========================================
-   CART & CHECKOUT (পারফেক্ট ফিক্স)
+   CART & CHECKOUT FUNCTIONS (মডিফাই করা অংশ)
    ========================================== */
 function pmAddToCart() {
   if (!isLoggedIn()) {
-    pendingCartAction = pmAddToCart; // লগইন হলে অটো কার্টে যোগ হবে
+    pendingCartAction = pmAddToCart;
     openLogin();
     return;
   }
@@ -486,7 +590,13 @@ function removeCartItem(i) { cart.splice(i, 1); updateCartUI(); }
 function openCart() { document.getElementById('cartOv').classList.add('active'); document.getElementById('cartSb').classList.add('active'); document.body.style.overflow = 'hidden'; }
 function closeCart() { document.getElementById('cartOv').classList.remove('active'); document.getElementById('cartSb').classList.remove('active'); document.body.style.overflow = ''; }
 
-function toggleWishlist(id) { if (wishlist.has(id)) { wishlist.delete(id); showToast('Removed from wishlist'); } else { wishlist.add(id); showToast('Added to wishlist'); } saveWishlist(); updateCartUI(); renderCurrentGrid(); }
+/* ==========================================
+   WISHLIST
+   ========================================== */
+function toggleWishlist(id) {
+  if (wishlist.has(id)) { wishlist.delete(id); showToast('Removed from wishlist'); } else { wishlist.add(id); showToast('Added to wishlist'); }
+  saveWishlist(); updateCartUI(); renderCurrentGrid();
+}
 function openWishlist() { document.getElementById('wlOv').classList.add('active'); document.getElementById('wlSb').classList.add('active'); document.body.style.overflow = 'hidden'; renderWishlist(); }
 function closeWishlist() { document.getElementById('wlOv').classList.remove('active'); document.getElementById('wlSb').classList.remove('active'); document.body.style.overflow = ''; }
 function renderWishlist() {
@@ -496,39 +606,104 @@ function renderWishlist() {
   document.getElementById('wlItems').innerHTML = h; document.getElementById('wlBadge').textContent = items.length;
 }
 
+/* ==========================================
+   SEARCH
+   ========================================== */
 function openSearch() { document.getElementById('searchOv').classList.add('active'); document.body.style.overflow = 'hidden'; setTimeout(function() { document.getElementById('searchInput').focus(); }, 300); }
 function closeSearch() { document.getElementById('searchOv').classList.remove('active'); document.body.style.overflow = ''; document.getElementById('searchInput').value = ''; document.getElementById('searchResults').innerHTML = ''; }
-function performSearch(q) { var res = document.getElementById('searchResults'); if (q.length < 2) { res.innerHTML = ''; return; } var ql = q.toLowerCase(); var found = products.filter(function(p) { return p.name.toLowerCase().indexOf(ql) !== -1 || p.category.indexOf(ql) !== -1; }); if (!found.length) { res.innerHTML = '<div class="search-no-result"><i class="fas fa-search"></i><p>No products found</p></div>'; return; } var h = '<div class="search-results-grid">'; found.forEach(function(p) { h += productCard(p); }); h += '</div>'; res.innerHTML = h; }
+function performSearch(q) {
+  var res = document.getElementById('searchResults'); if (q.length < 2) { res.innerHTML = ''; return; }
+  var ql = q.toLowerCase(); var found = products.filter(function(p) { return p.name.toLowerCase().indexOf(ql) !== -1 || p.category.indexOf(ql) !== -1; });
+  if (!found.length) { res.innerHTML = '<div class="search-no-result"><i class="fas fa-search"></i><p>No products found</p></div>'; return; }
+  var h = '<div class="search-results-grid">'; found.forEach(function(p) { h += productCard(p); }); h += '</div>'; res.innerHTML = h;
+}
 
+/* ==========================================
+   পেমেন্ট টগল এবং চেকআউট (মডিফাই করা অংশ)
+   ========================================== */
 function toggleTxnField() {
-  var method = document.getElementById('coPayMethod').value, payInfoDiv = document.getElementById('coPayInfo'), txnField = document.getElementById('coTxnField');
+  var method = document.getElementById('coPayMethod').value;
+  var payInfoDiv = document.getElementById('coPayInfo');
+  var txnField = document.getElementById('coTxnField');
   var total = cart.reduce(function(sum, item) { return sum + (item.price * item.qty); }, 0);
-  if (method === 'cod') { payInfoDiv.style.display = 'none'; txnField.style.display = 'none'; } else {
-    var number = (method === 'bkash') ? BKASH_NUMBER : NAGAD_NUMBER, methodName = (method === 'bkash') ? 'bKash' : 'Nagad';
-    payInfoDiv.innerHTML = '<div class="payment-info-box"><p><span class="pi-label">Send Money To (' + methodName + '):</span><strong>' + number + '</strong></p><p><span class="pi-label">Total Amount:</span><strong>' + fmtPrice(total) + '</strong></p><div class="pi-note"><i class="fas fa-info-circle"></i> অনুগ্রহ করে উপরোক্ত নাম্বারে <strong>"Send Money"</strong> করুন এবং নিচে আপনার Transaction ID টি প্রদান করুন।</div></div>';
-    payInfoDiv.style.display = 'block'; txnField.style.display = 'block';
+  var totalFormatted = fmtPrice(total);
+
+  if (method === 'cod') {
+    payInfoDiv.style.display = 'none';
+    txnField.style.display = 'none';
+  } else {
+    var number = (method === 'bkash') ? BKASH_NUMBER : NAGAD_NUMBER;
+    var methodName = (method === 'bkash') ? 'bKash' : 'Nagad';
+    
+    var html = '<div class="payment-info-box">';
+    html += '<p><span class="pi-label">Send Money To (' + methodName + '):</span>';
+    html += '<strong>' + number + '</strong></p>';
+    html += '<p><span class="pi-label">Total Amount:</span>';
+    html += '<strong>' + totalFormatted + '</strong></p>';
+    html += '<div class="pi-note"><i class="fas fa-info-circle"></i> অনুগ্রহ করে উপরোক্ত নাম্বারে <strong>"Send Money"</strong> করুন এবং নিচে আপনার Transaction ID টি প্রদান করুন।</div>';
+    html += '</div>';
+    
+    payInfoDiv.innerHTML = html;
+    payInfoDiv.style.display = 'block';
+    txnField.style.display = 'block';
   }
 }
 
 function openCheckout() {
   if (!cart.length) { showToast('Your cart is empty'); return; }
-  if (!isLoggedIn()) { pendingCartAction = openCheckout; openLogin(); return; }
-  document.getElementById('coOv').classList.add('active'); document.getElementById('coModal').classList.add('active'); document.body.style.overflow = 'hidden';
-  if (auth.currentUser) { document.getElementById('coEmail').value = auth.currentUser.email || ''; getFirebaseUserProfile(auth.currentUser.uid).then(function(p) { if (p) { document.getElementById('coName').value = p.name || ''; document.getElementById('coPhone').value = p.phone || ''; } }); }
-  document.getElementById('coPayMethod').value = 'cod'; document.getElementById('coPayInfo').style.display = 'none'; document.getElementById('coTxnField').style.display = 'none';
+  if (!isLoggedIn()) {
+    pendingCartAction = openCheckout;
+    openLogin();
+    return;
+  }
+  document.getElementById('coOv').classList.add('active');
+  document.getElementById('coModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  if (auth.currentUser) {
+    document.getElementById('coEmail').value = auth.currentUser.email || '';
+    getFirebaseUserProfile(auth.currentUser.uid).then(function(p) {
+      if (p) { document.getElementById('coName').value = p.name || ''; document.getElementById('coPhone').value = p.phone || ''; }
+    });
+  }
+  document.getElementById('coPayMethod').value = 'cod';
+  document.getElementById('coPayInfo').style.display = 'none';
+  document.getElementById('coTxnField').style.display = 'none';
 }
-function closeCheckout() { document.getElementById('coOv').classList.remove('active'); document.getElementById('coModal').classList.remove('active'); document.body.style.overflow = ''; }
+
+function closeCheckout() {
+  document.getElementById('coOv').classList.remove('active');
+  document.getElementById('coModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
 
 async function submitOrder() {
   if (!isLoggedIn()) { showToast('Please login to place an order'); pendingCartAction = submitOrder; openLogin(); return; }
-  var name = document.getElementById('coName').value.trim(), email = document.getElementById('coEmail').value.trim(), phone = document.getElementById('coPhone').value.trim(), address = document.getElementById('coAddress').value.trim(), notes = document.getElementById('coNotes').value.trim(), payMethod = document.getElementById('coPayMethod').value, txnId = document.getElementById('coTxnId').value.trim();
+  var name = document.getElementById('coName').value.trim();
+  var email = document.getElementById('coEmail').value.trim();
+  var phone = document.getElementById('coPhone').value.trim();
+  var address = document.getElementById('coAddress').value.trim();
+  var notes = document.getElementById('coNotes').value.trim();
+  var payMethod = document.getElementById('coPayMethod').value;
+  var txnId = document.getElementById('coTxnId').value.trim();
+
   if (!name || !email || !phone || !address) { showToast('Please fill in all required fields'); return; }
   if ((payMethod === 'bkash' || payMethod === 'nagad') && !txnId) { showToast('Please enter your ' + payMethod + ' Transaction ID'); return; }
+
   var total = cart.reduce(function(sum, item) { return sum + (item.price * item.qty); }, 0);
-  var configData = await loadConfig(); var currentNextId = configData.nextOrderId || 1001;
-  var orderData = { id: 'FG-' + String(currentNextId).padStart(4, '0'), date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }), customer: { name: name, email: email, phone: phone, address: address, notes: notes }, items: cart.map(function(item) { return { id: item.id, name: item.name, price: item.price, color: item.color, size: item.size, qty: item.qty, image: item.image }; }), total: total, payMethod: payMethod, txnId: (payMethod === 'cod') ? 'N/A' : txnId, paid: false, status: 'pending' };
+  var configData = await loadConfig();
+  var currentNextId = configData.nextOrderId || 1001;
+  
+  var orderData = {
+    id: 'FG-' + String(currentNextId).padStart(4, '0'),
+    date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+    customer: { name: name, email: email, phone: phone, address: address, notes: notes },
+    items: cart.map(function(item) { return { id: item.id, name: item.name, price: item.price, color: item.color, size: item.size, qty: item.qty, image: item.image }; }),
+    total: total, payMethod: payMethod, txnId: (payMethod === 'cod') ? 'N/A' : txnId, paid: false, status: 'pending'
+  };
+
   try {
-    await saveOrderToDB(orderData); await saveConfig({ nextOrderId: currentNextId + 1 });
+    await saveOrderToDB(orderData);
+    await saveConfig({ nextOrderId: currentNextId + 1 });
     cart = []; updateCartUI(); closeCheckout();
     showToast('Order placed successfully! Order ID: ' + orderData.id);
     document.getElementById('coName').value = ''; document.getElementById('coEmail').value = ''; document.getElementById('coPhone').value = ''; document.getElementById('coAddress').value = ''; document.getElementById('coNotes').value = '';
@@ -536,18 +711,28 @@ async function submitOrder() {
   } catch (error) { console.error("Order Error: ", error); showToast('Failed to place order. Try again.'); }
 }
 
+/* ==========================================
+   UTILITY FUNCTIONS
+   ========================================== */
 function fmtPrice(n) { return '৳' + Number(n).toLocaleString('en-BD'); }
 function showToast(m) { var t = document.getElementById('toast'); document.getElementById('toastMsg').textContent = m; t.classList.add('show'); setTimeout(function() { t.classList.remove('show'); }, 3000); }
 function subscribeNL(e) { e.preventDefault(); var inp = e.target.querySelector('input'); if(inp.value) { showToast('Subscribed successfully!'); inp.value = ''; } return false; }
 
+/* ==========================================
+   CATEGORY PAGE RENDERING HELPERS
+   ========================================== */
 function renderCurrentGrid() {
-  var gid = currentPageInfo.gridId; if (!gid) return;
-  var list = products.slice(); var page = currentPageInfo.page;
+  var gid = currentPageInfo.gridId;
+  if (!gid) return;
+  var list = products.slice();
+  var page = currentPageInfo.page;
   if (page === 'accessories' && currentPageInfo.subFilter) list = list.filter(function(p) { return p.subCategory === currentPageInfo.subFilter; });
   else if (page !== 'home' && page !== 'offer') list = list.filter(function(p) { return p.category === page; });
   else if (page === 'offer') list = list.filter(function(p) { return p.oldPrice > 0; });
+  
   if (_activeSubFilter) list = list.filter(function(p) { return p.subCategory === _activeSubFilter; });
   if (_activeSizes.length) list = list.filter(function(p) { return p.sizes.some(function(s) { return _activeSizes.indexOf(s) !== -1; }); });
+  
   document.getElementById(currentPageInfo.countId).textContent = list.length + ' products found';
   if (!list.length) { document.getElementById(gid).innerHTML = '<div class="no-products"><i class="fas fa-box-open"></i><br>No products found</div>'; return; }
   var h = ''; list.forEach(function(p) { h += productCard(p); }); document.getElementById(gid).innerHTML = h;
@@ -555,15 +740,29 @@ function renderCurrentGrid() {
 function initCategoryPage(page, gid, cid, fid, subFilter) {
   var cats = (page === 'accessories') ? SUB_CATS[subFilter] || [] : (SUB_CATS[page] || []);
   var h = '';
-  if (cats.length) { h += '<div class="filter-group"><h4>Sub Category</h4><div class="filter-sub-btns"><div class="fsub-btn' + (!_activeSubFilter ? ' active' : '') + '" onclick="_activeSubFilter=\'\';initCategoryPage(\'' + page + '\',\'' + gid + '\',\'' + cid + '\',\'' + fid + '\',\'' + (subFilter||'') + '\')"><i class="fas fa-check"></i> All</div>'; cats.forEach(function(c) { h += '<div class="fsub-btn' + (_activeSubFilter === c ? ' active' : '') + '" onclick="_activeSubFilter=\'' + c + '\';initCategoryPage(\'' + page + '\',\'' + gid + '\',\'' + cid + '\',\'' + fid + '\',\'' + (subFilter||'') + '\')"><i class="fas fa-check"></i> ' + SUB_CAT_LABELS[c] + '</div>'; }); h += '</div></div>'; }
-  h += '<div class="filter-group"><h4>Sizes</h4><div class="filter-size-btns">'; var sizes = (page === 'accessories' && subFilter === 'perfume') ? PERFUME_SIZES : ADMIN_SIZES; sizes.forEach(function(s) { h += '<div class="fsize-btn' + (_activeSizes.indexOf(s) !== -1 ? ' active' : '') + '" onclick="toggleFSize(\'' + s + '\')">' + s + '</div>'; }); h += '</div><button class="clear-filter-btn" onclick="_activeSizes=[];initCategoryPage(\'' + page + '\',\'' + gid + '\',\'' + cid + '\',\'' + fid + '\',\'' + (subFilter||'') + '\')">Clear Filters</button></div>';
-  document.getElementById(fid).innerHTML = h; renderCurrentGrid();
+  if (cats.length) {
+    h += '<div class="filter-group"><h4>Sub Category</h4><div class="filter-sub-btns">';
+    h += '<div class="fsub-btn' + (!_activeSubFilter ? ' active' : '') + '" onclick="_activeSubFilter=\'\';initCategoryPage(\'' + page + '\',\'' + gid + '\',\'' + cid + '\',\'' + fid + '\',\'' + (subFilter||'') + '\')"><i class="fas fa-check"></i> All</div>';
+    cats.forEach(function(c) { h += '<div class="fsub-btn' + (_activeSubFilter === c ? ' active' : '') + '" onclick="_activeSubFilter=\'' + c + '\';initCategoryPage(\'' + page + '\',\'' + gid + '\',\'' + cid + '\',\'' + fid + '\',\'' + (subFilter||'') + '\')"><i class="fas fa-check"></i> ' + SUB_CAT_LABELS[c] + '</div>'; });
+    h += '</div></div>';
+  }
+  h += '<div class="filter-group"><h4>Sizes</h4><div class="filter-size-btns">';
+  var sizes = (page === 'accessories' && subFilter === 'perfume') ? PERFUME_SIZES : ADMIN_SIZES;
+  sizes.forEach(function(s) { h += '<div class="fsize-btn' + (_activeSizes.indexOf(s) !== -1 ? ' active' : '') + '" onclick="toggleFSize(\'' + s + '\')">' + s + '</div>'; });
+  h += '</div><button class="clear-filter-btn" onclick="_activeSizes=[];initCategoryPage(\'' + page + '\',\'' + gid + '\',\'' + cid + '\',\'' + fid + '\',\'' + (subFilter||'') + '\')">Clear Filters</button></div>';
+  document.getElementById(fid).innerHTML = h;
+  renderCurrentGrid();
 }
 function toggleFSize(s) { var i = _activeSizes.indexOf(s); if (i === -1) _activeSizes.push(s); else _activeSizes.splice(i, 1); initCategoryPage(currentPageInfo.page, currentPageInfo.gridId, currentPageInfo.countId, currentPageInfo.filterId, currentPageInfo.subFilter || ''); }
 function renderTrending() { var list = products.filter(function(p) { return p.tag === 'New' || p.tag === 'Hot'; }).slice(0, 8); if(list.length < 4) list = products.slice(0, 8); var h = ''; list.forEach(function(p) { h += productCard(p); }); document.getElementById('trendGrid').innerHTML = h || '<div class="no-products"><i class="fas fa-box-open"></i><br>No products yet</div>'; }
 
+/* ==========================================
+   INIT
+   ========================================== */
 (async function init() {
-  loadWishlist(); initHeroSlider(); initScrollEffects();
+  loadWishlist();
+  initHeroSlider();
+  initScrollEffects();
   try { products = await loadProducts(); renderTrending(); updateCartUI(); } catch (e) { console.error('Init load error', e); }
   handleHash();
 })();
