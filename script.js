@@ -28,6 +28,12 @@ function hashPassword(pwd) {
   return CryptoJS.SHA256(pwd).toString();
 }
 
+// ==========================================
+// আপনার পেমেন্ট নাম্বার এখানে দিন
+// ==========================================
+var BKASH_NUMBER = "০১XXXXXXXXX"; // এখানে আপনার বিকাশ নাম্বার দিন
+var NAGAD_NUMBER = "০১XXXXXXXXX"; // এখানে আপনার নগদ নাম্বার দিন
+
 /* ==========================================
    TIMEOUT HELPER
    ========================================== */
@@ -599,13 +605,132 @@ function updateWlBadge() { document.getElementById('wlBadge').textContent = wish
 function renderWishlist() { var el = document.getElementById('wlItems'); if (!wishlist.size) { el.innerHTML = '<div class="cart-empty"><i class="fas fa-heart"></i><p>Empty</p></div>'; return; } var wp = products.filter(function (p) { return wishlist.has(p.id); }); if (!wp.length) { el.innerHTML = '<div class="cart-empty"><i class="fas fa-heart"></i><p>Not found</p></div>'; return; } var h = ''; wp.forEach(function (p) { h += '<div class="cart-item"><div class="cart-item-img" style="cursor:pointer" onclick="closeWishlist();openPM(' + p.id + ')"><img src="' + p.image + '"></div><div class="cart-item-info"><h4>' + escHtml(p.name) + '</h4><div class="cart-item-price" style="margin-top:4px">' + fmtPrice(p.price) + '</div><div class="wl-item-actions"><button class="wl-action-btn wl-add-cart" onclick="addToCart(products.find(function(x){return x.id===' + p.id + '}),\'' + (p.colors[0] || '') + '\',\'' + (p.sizes[0] || '') + '\',1);closeWishlist();openCart()">Add to Cart</button><button class="wl-action-btn wl-remove" onclick="toggleWishlist(' + p.id + ');renderWishlist()">Remove</button></div></div></div>'; }); el.innerHTML = h; }
 
 /* ==========================================
-   CHECKOUT
+   চেকআউট পেমেন্ট টগল এবং অর্ডার সাবমিট
    ========================================== */
-function openCheckout() { if (!cart.length) { showToast('Cart empty'); return; } closeCart(); if (isLoggedIn()) { var u = auth.currentUser; document.getElementById('coEmail').value = u.email || ''; getFirebaseUserProfile(u.uid).then(function (pr) { if (pr) { document.getElementById('coName').value = pr.name || ''; document.getElementById('coPhone').value = pr.phone || ''; } }); } document.getElementById('coOv').classList.add('active'); document.getElementById('coModal').classList.add('active'); document.body.style.overflow = 'hidden'; }
-function closeCheckout() { document.getElementById('coOv').classList.remove('active'); document.getElementById('coModal').classList.remove('active'); document.body.style.overflow = ''; }
-function toggleTxnField() { document.getElementById('coTxnField').style.display = document.getElementById('coPayMethod').value === 'cod' ? 'none' : 'block'; }
-async function submitOrder() { var n = document.getElementById('coName').value.trim(), em = document.getElementById('coEmail').value.trim(), ph = document.getElementById('coPhone').value.trim(), ad = document.getElementById('coAddress').value.trim(), nt = document.getElementById('coNotes').value.trim(), pm = document.getElementById('coPayMethod').value, tx = document.getElementById('coTxnId').value.trim(); if (!n || !em || !ph || !ad) { showToast('Fill required fields'); return; } if (pm !== 'cod' && !tx) { showToast('Enter transaction ID'); return; } var tot = cart.reduce(function (s, c) { return s + c.price * c.qty; }, 0); var cfg = await loadConfig(); var oid = 'FG-' + String(cfg.nextOrderId).padStart(5, '0'); var now = new Date(); var od = { id: oid, date: now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }), customer: { name: n, email: em, phone: ph, address: ad, notes: nt }, items: cart.map(function (c) { return { id: c.id, name: c.name, image: c.image, price: c.price, color: c.color, size: c.size, qty: c.qty }; }), total: tot, payMethod: pm, txnId: tx, paid: pm !== 'cod', status: 'pending', createdAt: now.toISOString() }; try { await saveOrderToDB(od); cfg.nextOrderId++; await saveConfig(cfg); cart = []; updateCartBadge(); closeCheckout(); ['coName', 'coEmail', 'coPhone', 'coAddress', 'coNotes', 'coTxnId'].forEach(function (id) { document.getElementById(id).value = ''; }); document.getElementById('coPayMethod').value = 'cod'; document.getElementById('coTxnField').style.display = 'none'; showToast('Order placed! ' + oid); } catch (e) { showToast('Error'); } }
-function subscribeNL(e) { e.preventDefault(); var i = e.target.querySelector('input'); if (i.value) { showToast('Subscribed!'); i.value = ''; } return false; }
+function toggleTxnField() {
+  var method = document.getElementById('coPayMethod').value;
+  var payInfoDiv = document.getElementById('coPayInfo');
+  var txnField = document.getElementById('coTxnField');
+  
+  // কার্টের মোট টাকা বের করা
+  var total = cart.reduce(function(sum, item) { return sum + (item.price * item.qty); }, 0);
+  var totalFormatted = fmtPrice(total);
+
+  if (method === 'cod') {
+    payInfoDiv.style.display = 'none';
+    txnField.style.display = 'none';
+  } else {
+    var number = (method === 'bkash') ? BKASH_NUMBER : NAGAD_NUMBER;
+    var methodName = (method === 'bkash') ? 'bKash' : 'Nagad';
+    
+    var html = '<div class="payment-info-box">';
+    html += '<p><span class="pi-label">Send Money To (' + methodName + '):</span>';
+    html += '<strong>' + number + '</strong></p>';
+    html += '<p><span class="pi-label">Total Amount:</span>';
+    html += '<strong>' + totalFormatted + '</strong></p>';
+    html += '<div class="pi-note"><i class="fas fa-info-circle"></i> অনুগ্রহ করে উপরোক্ত নাম্বারে <strong>"Send Money"</strong> করুন এবং নিচে আপনার Transaction ID টি প্রদান করুন।</div>';
+    html += '</div>';
+    
+    payInfoDiv.innerHTML = html;
+    payInfoDiv.style.display = 'block';
+    txnField.style.display = 'block';
+  }
+}
+
+async function submitOrder() {
+  var name = document.getElementById('coName').value.trim();
+  var email = document.getElementById('coEmail').value.trim();
+  var phone = document.getElementById('coPhone').value.trim();
+  var address = document.getElementById('coAddress').value.trim();
+  var notes = document.getElementById('coNotes').value.trim();
+  var payMethod = document.getElementById('coPayMethod').value;
+  var txnId = document.getElementById('coTxnId').value.trim();
+
+  // ভ্যালিডেশন চেক
+  if (!name || !email || !phone || !address) {
+    showToast('Please fill in all required fields');
+    return;
+  }
+
+  // বিকাশ বা নগদ হলে TrxID আছে কি না চেক
+  if ((payMethod === 'bkash' || payMethod === 'nagad') && !txnId) {
+    showToast('Please enter your ' + payMethod + ' Transaction ID');
+    return;
+  }
+
+  var total = cart.reduce(function(sum, item) { return sum + (item.price * item.qty); }, 0);
+  
+  // অর্ডার অবজেক্ট তৈরি (অ্যাডমিন প্যানেলের সাথে ম্যাচ করার জন্য)
+  var orderData = {
+    id: 'FG-' + String(nextOrderId).padStart(4, '0'),
+    date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+    customer: { name: name, email: email, phone: phone, address: address, notes: notes },
+    items: cart.map(function(item) { return { id: item.id, name: item.name, price: item.price, color: item.color, size: item.size, qty: item.qty, image: item.image }; }),
+    total: total,
+    payMethod: payMethod,
+    txnId: (payMethod === 'cod') ? 'N/A' : txnId, // ক্যাশ অন ডেলিভারিতে TrxID লাগবে না
+    paid: (payMethod === 'cod') ? false : false, // ম্যানুয়াল পেমেন্টে প্রথমে false থাকবে, অ্যাডমিন ভেরিফাই করে true করবে
+    status: 'pending'
+  };
+
+  try {
+    // ফায়ারবেসে সেভ করা
+    await saveOrderToDB(orderData);
+    
+    // nextOrderId আপডেট করা
+    await saveConfig({ nextOrderId: nextOrderId + 1 });
+    
+    // কার্ট খালি করা এবং ইউজারকে ধন্যবাদ জানানো
+    cart = [];
+    updateCartUI();
+    closeCheckout();
+    showToast('Order placed successfully! Order ID: ' + orderData.id);
+    
+    // চেকআউট ফর্ম রিসেট করে দেওয়া
+    document.getElementById('coName').value = '';
+    document.getElementById('coEmail').value = '';
+    document.getElementById('coPhone').value = '';
+    document.getElementById('coAddress').value = '';
+    document.getElementById('coNotes').value = '';
+    document.getElementById('coPayMethod').value = 'cod';
+    document.getElementById('coTxnId').value = '';
+    document.getElementById('coPayInfo').style.display = 'none';
+    document.getElementById('coTxnField').style.display = 'none';
+    
+  } catch (error) {
+    console.error("Order Error: ", error);
+    showToast('Failed to place order. Try again.');
+  }
+}
+
+function openCheckout() {
+  if (!cart.length) { showToast('Your cart is empty'); return; }
+  document.getElementById('coOv').classList.add('active');
+  document.getElementById('coModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  
+  // লগইন থাকলে ইউজারের তথ্য অটো ফিল করা
+  if (auth.currentUser) {
+    document.getElementById('coEmail').value = auth.currentUser.email || '';
+    getFirebaseUserProfile(auth.currentUser.uid).then(function(p) {
+      if (p) {
+        document.getElementById('coName').value = p.name || '';
+        document.getElementById('coPhone').value = p.phone || '';
+      }
+    });
+  }
+  
+  // পেমেন্ট ইনফো রিসেট করা
+  document.getElementById('coPayMethod').value = 'cod';
+  document.getElementById('coPayInfo').style.display = 'none';
+  document.getElementById('coTxnField').style.display = 'none';
+}
+
+function closeCheckout() {
+  document.getElementById('coOv').classList.remove('active');
+  document.getElementById('coModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
 
 /* ==========================================
    UTILITIES
