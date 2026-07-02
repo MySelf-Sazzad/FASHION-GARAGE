@@ -415,7 +415,7 @@ function productCard(p) {
   if (p.oldPrice) h += '<span class="old">' + fmtPrice(p.oldPrice) + '</span>';
   h += '</div>';
   if (p.inStock) {
-    h += '<button class="qv-btn" onclick="event.stopPropagation();openPM(' + p.id + ')">Quick View</button>';
+    h += '<button class="qv-btn" onclick="event.stopPropagation();openPM(' + p.id + ')">ORDER NOW</button>';
   } else {
     h += '<button class="qv-btn oos" disabled>Out of Stock</button>';
   }
