@@ -512,6 +512,12 @@ function updateCartBadge() {
 }
 
 function addToCart(item) {
+  if (!isLoggedIn()) {
+    pendingCartAction = function () { addToCart(item); };
+    openLogin();
+    showToast('Please login to add items to your bag');
+    return;
+  }
   var exist = null;
   for (var i = 0; i < cart.length; i++) {
     if (cart[i].productId === item.productId && cart[i].color === item.color && cart[i].size === item.size) {
@@ -740,36 +746,43 @@ function openCheckout() {
   if (!cart.length) { showToast('Your bag is empty'); return; }
   closeCart();
 
-  // Pre-fill if logged in
-  if (isLoggedIn()) {
-    getLoggedUser().then(function (u) {
-      if (u) {
-        document.getElementById('coName').value = u.name || '';
-        document.getElementById('coEmail').value = u.email || '';
-        document.getElementById('coPhone').value = u.phone || '';
-      }
-    });
-  }
-
-  // Render order summary
-  renderCheckoutSummary();
-
-  // Reset fields
-  if (!isLoggedIn()) {
-    document.getElementById('coName').value = '';
-    document.getElementById('coEmail').value = '';
-    document.getElementById('coPhone').value = '';
-  }
-  document.getElementById('coAddress').value = '';
-  document.getElementById('coNotes').value = '';
-  document.getElementById('coPayMethod').value = 'cod';
-  document.getElementById('coTxnId').value = '';
-  document.getElementById('coTxnField').style.display = 'none';
-  document.getElementById('coDeliveryArea').value = 'inside_dhaka';
-
+  // Show the modal FIRST. This guarantees the checkout UI always appears,
+  // even if something below (prefill / reset / summary render) throws an
+  // error for any reason (missing field, Firebase hiccup, etc).
   document.getElementById('coOv').classList.add('active');
   document.getElementById('coModal').classList.add('active');
   document.body.style.overflow = 'hidden';
+
+  try {
+    // Reset fields
+    document.getElementById('coAddress').value = '';
+    document.getElementById('coNotes').value = '';
+    document.getElementById('coPayMethod').value = 'cod';
+    document.getElementById('coTxnId').value = '';
+    document.getElementById('coTxnField').style.display = 'none';
+    document.getElementById('coDeliveryArea').value = 'inside_dhaka';
+    updatePayInfo();
+
+    // Pre-fill if logged in, otherwise clear
+    if (isLoggedIn()) {
+      getLoggedUser().then(function (u) {
+        if (u) {
+          document.getElementById('coName').value = u.name || '';
+          document.getElementById('coEmail').value = u.email || '';
+          document.getElementById('coPhone').value = u.phone || '';
+        }
+      }).catch(function (e) { console.error('Checkout prefill error:', e); });
+    } else {
+      document.getElementById('coName').value = '';
+      document.getElementById('coEmail').value = '';
+      document.getElementById('coPhone').value = '';
+    }
+
+    // Render order summary
+    renderCheckoutSummary();
+  } catch (e) {
+    console.error('Checkout init error:', e);
+  }
 }
 
 function closeCheckout() {
@@ -778,19 +791,43 @@ function closeCheckout() {
   document.body.style.overflow = '';
 }
 
+// Shared helper so summary, payment-info box and submitOrder always agree on the numbers
+function getCheckoutTotals() {
+  var subtotal = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
+  var area = document.getElementById('coDeliveryArea');
+  var deliveryArea = area ? area.value : 'inside_dhaka';
+  var deliveryCharge = deliveryArea === 'inside_dhaka' ? DELIVERY_INSIDE_DHAKA : DELIVERY_OUTSIDE_DHAKA;
+  return { subtotal: subtotal, deliveryArea: deliveryArea, deliveryCharge: deliveryCharge, total: subtotal + deliveryCharge };
+}
+
 function toggleTxnField() {
   var m = document.getElementById('coPayMethod').value;
   document.getElementById('coTxnField').style.display = (m === 'bkash' || m === 'nagad') ? 'block' : 'none';
+  updatePayInfo();
+}
+
+// Shows which number (bKash/Nagad) to send money to, and exactly how much
+// (subtotal + delivery charge), BEFORE the customer pays and enters the txn ID.
+function updatePayInfo() {
+  var box = document.getElementById('coPayInfo');
+  if (!box) return;
+  var m = document.getElementById('coPayMethod').value;
+  if (m === 'bkash' || m === 'nagad') {
+    var t = getCheckoutTotals();
+    var num = m === 'bkash' ? BKASH_NUMBER : NAGAD_NUMBER;
+    document.getElementById('coPayMethodName').textContent = m === 'bkash' ? 'bKash' : 'Nagad';
+    document.getElementById('coPayNumberDisp').textContent = num;
+    document.getElementById('coPayAmount').textContent = fmtPrice(t.total);
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
 }
 
 function renderCheckoutSummary() {
   var el = document.getElementById('coOrderSummary');
   if (!cart.length) { el.innerHTML = ''; return; }
-  var subtotal = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
-  var area = document.getElementById('coDeliveryArea');
-  var deliveryArea = area ? area.value : 'inside_dhaka';
-  var deliveryCharge = deliveryArea === 'inside_dhaka' ? DELIVERY_INSIDE_DHAKA : DELIVERY_OUTSIDE_DHAKA;
-  var total = subtotal + deliveryCharge;
+  var t = getCheckoutTotals();
 
   var h = '<div class="co-order-summary"><h4>Order Summary</h4>';
   cart.forEach(function (item) {
@@ -801,16 +838,17 @@ function renderCheckoutSummary() {
     h += '<div class="co-summary-item-price">' + fmtPrice(item.price * item.qty) + '</div>';
     h += '</div>';
   });
-  h += '<div class="co-summary-total"><span>Subtotal: ' + fmtPrice(subtotal) + '</span><span>Delivery: ' + fmtPrice(deliveryCharge) + '</span></div>';
-  h += '<div class="co-summary-total" style="border-top:none;padding-top:4px"><span>Total</span><span>' + fmtPrice(total) + '</span></div>';
+  h += '<div class="co-summary-total"><span>Subtotal: ' + fmtPrice(t.subtotal) + '</span><span>Delivery: ' + fmtPrice(t.deliveryCharge) + '</span></div>';
+  h += '<div class="co-summary-total" style="border-top:none;padding-top:4px"><span>Total</span><span>' + fmtPrice(t.total) + '</span></div>';
   h += '</div>';
   el.innerHTML = h;
 }
 
-// Update summary when delivery area changes
+// Update summary + payment info when delivery area changes
 document.addEventListener('change', function (e) {
   if (e.target && e.target.id === 'coDeliveryArea') {
     renderCheckoutSummary();
+    updatePayInfo();
   }
 });
 
@@ -837,9 +875,10 @@ async function submitOrder() {
     return;
   }
 
-  var subtotal = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
-  var deliveryCharge = deliveryArea === 'inside_dhaka' ? DELIVERY_INSIDE_DHAKA : DELIVERY_OUTSIDE_DHAKA;
-  var total = subtotal + deliveryCharge;
+  var t = getCheckoutTotals();
+  var subtotal = t.subtotal;
+  var deliveryCharge = t.deliveryCharge;
+  var total = t.total;
 
   var btn = document.querySelector('#coModal .co-submit');
   var ot = btn.textContent;
