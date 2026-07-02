@@ -671,3 +671,45 @@ button,input,select,textarea{font-family:var(--fb)}
 .user-dropdown .dd-divider{height:1px;background:rgba(255,255,255,.06);margin:4px 0}
 .user-dropdown .dd-logout{color:var(--danger)}
 .user-dropdown .dd-logout:hover{color:var(--danger);background:rgba(231,76,60,.05)}
+
+/* ==========================================
+   পেমেন্ট ইনফো বক্স (বিকাশ/নগদ)
+   ========================================== */
+.payment-info-box {
+  background: rgba(212,160,23,0.05);
+  border: 1px solid rgba(212,160,23,0.2);
+  padding: 16px;
+  border-radius: 6px;
+  margin-bottom: 5px;
+}
+.payment-info-box p {
+  font-size: 13px;
+  color: var(--lg);
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+.payment-info-box p:last-child {
+  margin-bottom: 0;
+}
+.payment-info-box .pi-label {
+  font-family: var(--fh);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--w);
+  display: block;
+  margin-bottom: 4px;
+}
+.payment-info-box strong {
+  color: var(--gold);
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+.payment-info-box .pi-note {
+  font-size: 11px;
+  color: rgba(255,255,255,.4);
+  margin-top: 10px;
+  border-top: 1px dashed rgba(255,255,255,.1);
+  padding-top: 10px;
+}
