@@ -518,17 +518,14 @@ function openPM(id) {
   document.getElementById('pmImg').src = p.image;
   document.getElementById('pmName').textContent = p.name;
 
-  // ট্যাগ / আউট অফ স্টক
   if (p.tag) { document.getElementById('pmTag').innerHTML = '<div class="pm-tag">' + p.tag + '</div>'; }
   else if (!p.inStock) { document.getElementById('pmTag').innerHTML = '<div class="pm-oos-tag">Out of Stock</div>'; }
   else { document.getElementById('pmTag').innerHTML = ''; }
 
-  // প্রাইস
   var priceHtml = '<span class="cur">' + fmtPrice(p.price) + '</span>';
   if (p.oldPrice) priceHtml += '<span class="old">' + fmtPrice(p.oldPrice) + '</span>';
   document.getElementById('pmPrice').innerHTML = priceHtml;
 
-  // কালার — শুধুমাত্র থাকলে দেখাবে, না থাকলে লুকাবে
   var colorsDiv = document.getElementById('pmColors');
   var colorsLabel = colorsDiv.previousElementSibling;
   if (p.colors && p.colors.length) {
@@ -544,7 +541,6 @@ function openPM(id) {
     colorsDiv.style.display = 'none';
   }
 
-  // সাইজ — শুধুমাত্র থাকলে দেখাবে, না থাকলে লুকাবে
   var sizesDiv = document.getElementById('pmSizes');
   var sizesLabel = sizesDiv.previousElementSibling;
   if (p.sizes && p.sizes.length) {
@@ -559,10 +555,8 @@ function openPM(id) {
     sizesDiv.style.display = 'none';
   }
 
-  // কোয়ান্টিটি
   document.getElementById('pmQtyVal').textContent = '1';
 
-  // অ্যাড টু কার্ট বাটন
   var addBtn = document.getElementById('pmAddBtn');
   if (!p.inStock) {
     addBtn.textContent = 'Out of Stock';
@@ -613,7 +607,6 @@ function pmQty(delta) {
 function pmAddToCart() {
   if (!pmCurrentProduct || !pmCurrentProduct.inStock) return;
 
-  // ★ লগইন চেক — লগইন না থাকলে লগইন চাইবে
   if (!isLoggedIn()) {
     pendingCartAction = function () { pmAddToCart(); };
     openLogin();
@@ -622,13 +615,11 @@ function pmAddToCart() {
 
   var p = pmCurrentProduct;
 
-  // কালার শুধু তখনই ম্যান্ডেটরি যখন প্রোডাক্টে কালার আছে
   if (p.colors && p.colors.length && !pmSelectedColor) {
     showToast('Please select a color');
     return;
   }
 
-  // সাইজ শুধু তখনই ম্যান্ডেটরি যখন প্রোডাক্টে সাইজ আছে
   if (p.sizes && p.sizes.length && !pmSelectedSize) {
     showToast('Please select a size');
     return;
@@ -725,7 +716,6 @@ function renderWishlist() {
 }
 function updateWlBadge() { document.getElementById('wlBadge').textContent = wishlist.size; }
 
-// উইশলিস্ট থেকে কার্টে — লগইন চেক
 function wlAddToCart(id) {
   if (!isLoggedIn()) {
     pendingCartAction = function () { wlAddToCart(id); };
@@ -835,7 +825,6 @@ function applyFilters() {
 function openCheckout() {
   if (!cart.length) { showToast('Cart is empty'); return; }
 
-  // ★ লগইন চেক
   if (!isLoggedIn()) {
     pendingCartAction = function () { openCheckout(); };
     openLogin();
@@ -845,7 +834,6 @@ function openCheckout() {
   var coBody = document.querySelector('.co-body');
   var payMethodField = document.getElementById('coPayMethod').parentElement;
 
-  // ডেলিভারি এরিয়া ফিল্ড ইনজেক্ট (একবারই)
   if (!document.getElementById('coDeliveryArea')) {
     var df = document.createElement('div');
     df.className = 'co-field';
@@ -854,7 +842,6 @@ function openCheckout() {
     coBody.insertBefore(df, payMethodField);
   }
 
-  // পেমেন্ট ইনফো ডিভ ইনজেক্ট (একবারই)
   if (!document.getElementById('coPayInfo')) {
     var pi = document.createElement('div');
     pi.id = 'coPayInfo';
@@ -862,7 +849,6 @@ function openCheckout() {
     coBody.insertBefore(pi, document.getElementById('coTxnField'));
   }
 
-  // ইউজার ইনফো প্রি-ফিল
   getLoggedUser().then(function (u) {
     if (u) {
       if (!document.getElementById('coName').value) document.getElementById('coName').value = u.name || '';
@@ -871,12 +857,11 @@ function openCheckout() {
     }
   });
 
-  // রিসেট
   document.getElementById('coPayMethod').value = 'cod';
   document.getElementById('coTxnId').value = '';
   document.getElementById('coTxnField').style.display = 'none';
   var payInfo = document.getElementById('coPayInfo');
-  if (payInfo) payInfo.style.display = 'none';
+  if (payInfo) { payInfo.style.display = 'none'; payInfo.innerHTML = ''; }
 
   document.getElementById('coOv').classList.add('active');
   document.getElementById('coModal').classList.add('active');
@@ -893,7 +878,6 @@ function toggleTxnField() {
   updatePaymentInfo();
 }
 
-// ★ বিকাশ/নগদ সিলেক্ট করলে নাম্বার, ডেলিভারি চার্জ, টোটাল দেখাবে
 function updatePaymentInfo() {
   var method = document.getElementById('coPayMethod').value;
   var txnField = document.getElementById('coTxnField');
@@ -926,26 +910,16 @@ function updatePaymentInfo() {
           '<span style="font-family:var(--fh);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px">' + number + '</span>' +
         '</div>' +
         '<div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--lg)">' +
-          '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">' +
-            '<span>Subtotal</span>' +
-            '<span style="color:var(--w)">' + fmtPrice(subtotal) + '</span>' +
-          '</div>' +
-          '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">' +
-            '<span>Delivery (' + areaLabel + ')</span>' +
-            '<span style="color:var(--w)">' + fmtPrice(deliveryCharge) + '</span>' +
-          '</div>' +
-          '<div style="display:flex;justify-content:space-between;padding:10px 0;margin-top:4px;border-top:2px solid var(--gold)">' +
-            '<span style="font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;color:var(--w)">TOTAL TO PAY</span>' +
-            '<span style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--gold)">' + fmtPrice(total) + '</span>' +
-          '</div>' +
+          '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span>Subtotal</span><span style="color:var(--w)">' + fmtPrice(subtotal) + '</span></div>' +
+          '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span>Delivery (' + areaLabel + ')</span><span style="color:var(--w)">' + fmtPrice(deliveryCharge) + '</span></div>' +
+          '<div style="display:flex;justify-content:space-between;padding:10px 0;margin-top:4px;border-top:2px solid var(--gold)"><span style="font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;color:var(--w)">TOTAL TO PAY</span><span style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--gold)">' + fmtPrice(total) + '</span></div>' +
         '</div>' +
         '<p style="font-size:11px;color:rgba(255,255,255,.35);margin-top:12px;line-height:1.6"><i class="fas fa-info-circle" style="margin-right:4px"></i>Send <strong style="color:var(--gold)">' + fmtPrice(total) + '</strong> to <strong style="color:var(--gold)">' + number + '</strong> via ' + methodName + ', then enter your Transaction ID below.</p>' +
       '</div>';
 
   } else {
     txnField.style.display = 'none';
-    payInfo.style.display = 'none';
-    payInfo.innerHTML = '';
+    if (payInfo) { payInfo.style.display = 'none'; payInfo.innerHTML = ''; }
   }
 }
 
@@ -992,12 +966,7 @@ async function submitOrder() {
     var order = {
       id: orderId,
       date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      customer: {
-        name: name,
-        email: email,
-        phone: phone,
-        address: address
-      },
+      customer: { name: name, email: email, phone: phone, address: address },
       items: cart.map(function (i) {
         return { id: i.id, name: i.name, image: i.image, price: i.price, color: i.color, size: i.size, qty: i.qty };
       }),
