@@ -201,7 +201,7 @@
     <div class="breadcrumb"><a href="#" onclick="showPage('home');return false">Home</a><span class="sep">/</span><span class="current">Men</span></div>
     <h2 class="cat-page-title">Men's Collection</h2>
     <p class="cat-page-count" id="menCount"></p>
-    <div class="cat-page-layout"><button class="mobile-filter-toggle" onclick="toggleMobileFilters(this,'menFilter')"><span><i class="fas fa-sliders"></i> Filters</span><i class="fas fa-chevron-down mft-chevron"></i></button><aside class="filter-sidebar" id="menFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="menGrid"></div></div></div>
+    <div class="cat-page-layout"><aside class="filter-sidebar" id="menFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="menGrid"></div></div></div>
   </div>
 </div>
 
@@ -211,7 +211,7 @@
     <div class="breadcrumb"><a href="#" onclick="showPage('home');return false">Home</a><span class="sep">/</span><span class="current">Women</span></div>
     <h2 class="cat-page-title">Women's Collection</h2>
     <p class="cat-page-count" id="womenCount"></p>
-    <div class="cat-page-layout"><button class="mobile-filter-toggle" onclick="toggleMobileFilters(this,'womenFilter')"><span><i class="fas fa-sliders"></i> Filters</span><i class="fas fa-chevron-down mft-chevron"></i></button><aside class="filter-sidebar" id="womenFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="womenGrid"></div></div></div>
+    <div class="cat-page-layout"><aside class="filter-sidebar" id="womenFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="womenGrid"></div></div></div>
   </div>
 </div>
 
@@ -221,7 +221,7 @@
     <div class="breadcrumb"><a href="#" onclick="showPage('home');return false">Home</a><span class="sep">/</span><span class="current" id="accBreadcrumb">Accessories</span></div>
     <h2 class="cat-page-title" id="accTitle">Accessories</h2>
     <p class="cat-page-count" id="accCount"></p>
-    <div class="cat-page-layout"><button class="mobile-filter-toggle" onclick="toggleMobileFilters(this,'accFilter')"><span><i class="fas fa-sliders"></i> Filters</span><i class="fas fa-chevron-down mft-chevron"></i></button><aside class="filter-sidebar" id="accFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="accGrid"></div></div></div>
+    <div class="cat-page-layout"><aside class="filter-sidebar" id="accFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="accGrid"></div></div></div>
   </div>
 </div>
 
@@ -231,7 +231,7 @@
     <div class="breadcrumb"><a href="#" onclick="showPage('home');return false">Home</a><span class="sep">/</span><span class="current">Sale</span></div>
     <h2 class="cat-page-title">Special Offers</h2>
     <p class="cat-page-count" id="offerCount"></p>
-    <div class="cat-page-layout"><button class="mobile-filter-toggle" onclick="toggleMobileFilters(this,'offerFilter')"><span><i class="fas fa-sliders"></i> Filters</span><i class="fas fa-chevron-down mft-chevron"></i></button><aside class="filter-sidebar" id="offerFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="offerGrid"></div></div></div>
+    <div class="cat-page-layout"><aside class="filter-sidebar" id="offerFilter"></aside><div class="cat-products-area"><div class="cprod-grid" id="offerGrid"></div></div></div>
   </div>
 </div>
 
@@ -399,7 +399,6 @@
 
 <!-- Admin Panel -->
 <div class="admin-panel" id="adminPanel" style="display:none">
-  <div class="admin-sidebar-overlay" id="adminSidebarOverlay" onclick="toggleAdminSidebar()"></div>
   <aside class="admin-sidebar" id="adminSidebar">
     <div class="admin-sidebar-hdr"><img src="JGT.png" alt="FG"><span>Admin Panel</span></div>
     <nav class="admin-snav">
