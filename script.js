@@ -18,9 +18,7 @@ var db = null;
 try { db = firebase.firestore(); } catch (e) { console.error('Firestore init failed:', e); }
 
 /* ==========================================
-   হ্যাশ হেল্পার — পাসওয়ার্ড কখনো প্লেইন টেক্সটে থাকে না
-   নিচেরটা SHA-256('admin123') এর হ্যাশ —
-   কেউ এটা দেখে মূল পাসওয়ার্ড বের করতে পারবে না
+   হ্যাশ হেল্পার
    ========================================== */
 var ADMIN_INIT_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
 
@@ -29,10 +27,16 @@ function hashPassword(pwd) {
 }
 
 // ==========================================
-// আপনার পেমেন্ট নাম্বার এখানে দিন
+// পেমেন্ট নাম্বার
 // ==========================================
-var BKASH_NUMBER = "01631650688"; // এখানে আপনার বিকাশ নাম্বার দিন
-var NAGAD_NUMBER = "01631650688"; // এখানে আপনার নগদ নাম্বার দিন
+var BKASH_NUMBER = "01631650688";
+var NAGAD_NUMBER = "01631650688";
+
+// ==========================================
+// ডেলিভারি চার্জ
+// ==========================================
+var DELIVERY_INSIDE_DHAKA = 80;
+var DELIVERY_OUTSIDE_DHAKA = 120;
 
 /* ==========================================
    TIMEOUT HELPER
@@ -186,19 +190,14 @@ function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
    LOGIN UI
    ========================================== */
 function openLogin() { document.getElementById('loginOv').classList.add('active'); document.getElementById('loginModal').classList.add('active'); document.body.style.overflow = 'hidden'; showLogForm(); }
-function closeLogin() { 
-  document.getElementById('loginOv').classList.remove('active'); 
-  document.getElementById('loginModal').classList.remove('active'); 
-  
-  // চেক করবে অন্য কোনো মোডাল (প্রোডাক্ট, কার্ট, চেকআউট) ওপেন আছে কি না। থাকলে ব্যাকগ্রাউন্ড স্ক্রল ব্লক থাকবে।
+function closeLogin() {
+  document.getElementById('loginOv').classList.remove('active');
+  document.getElementById('loginModal').classList.remove('active');
   var isOtherOpen = document.querySelector('.pm-ov.active, .cart-ov.active, .wl-ov.active, .co-ov.active');
-  if (!isOtherOpen) {
-    document.body.style.overflow = '';
-  }
-  
-  ['loginEmail', 'loginPass', 'regName', 'regEmail', 'regPhone', 'regPass', 'forgotEmail'].forEach(function (i) { document.getElementById(i).value = ''; }); 
-  ['loginError', 'regError', 'forgotError', 'forgotSuccess'].forEach(function (i) { document.getElementById(i).classList.remove('show'); }); 
-  document.querySelectorAll('.login-modal .co-submit').forEach(function (b) { b.disabled = false; }); 
+  if (!isOtherOpen) { document.body.style.overflow = ''; }
+  ['loginEmail', 'loginPass', 'regName', 'regEmail', 'regPhone', 'regPass', 'forgotEmail'].forEach(function (i) { document.getElementById(i).value = ''; });
+  ['loginError', 'regError', 'forgotError', 'forgotSuccess'].forEach(function (i) { document.getElementById(i).classList.remove('show'); });
+  document.querySelectorAll('.login-modal .co-submit').forEach(function (b) { b.disabled = false; });
 }
 function showLogForm() { document.getElementById('loginFormDiv').style.display = 'block'; document.getElementById('regFormDiv').style.display = 'none'; document.getElementById('forgotFormDiv').style.display = 'none'; document.getElementById('loginTitle').textContent = 'Login'; document.getElementById('loginError').classList.remove('show'); }
 function showRegForm() { document.getElementById('loginFormDiv').style.display = 'none'; document.getElementById('regFormDiv').style.display = 'block'; document.getElementById('forgotFormDiv').style.display = 'none'; document.getElementById('loginTitle').textContent = 'Register'; document.getElementById('regError').classList.remove('show'); }
@@ -208,7 +207,7 @@ async function handleUserClick() { if (isLoggedIn()) { var u = await getLoggedUs
 function updateUserUI(fu) { var b = document.getElementById('userBtn'); if (fu) { b.classList.add('logged-in'); b.querySelector('i').className = 'fas fa-user-check'; } else { b.classList.remove('logged-in'); b.querySelector('i').className = 'fas fa-user'; } }
 
 /* ==========================================
-   ADMIN PANEL — হ্যাশ-ভিত্তিক সিকিউরিটি (ফ্রি)
+   ADMIN PANEL
    ========================================== */
 function handleHash() { if (window.location.hash === '#admin') showAdminLogin(); else hideAdmin(); }
 window.addEventListener('hashchange', handleHash);
@@ -239,45 +238,19 @@ async function refreshStoreData() {
   try { orders = await loadOrders(); } catch (e) { orders = []; }
 }
 
-/* ==========================================
-   অ্যাডমিন লগইন — পাসওয়ার্ড হ্যাশ করে চেক
-   কোডে কোনো প্লেইন টেক্সট পাসওয়ার্ড নেই
-   ========================================== */
 async function adminDoLogin() {
   var u = document.getElementById('adminUser').value.trim();
   var p = document.getElementById('adminPass').value;
   var err = document.getElementById('adminLoginError');
   err.classList.remove('show');
-
-  if (!u || !p) {
-    err.textContent = 'Please enter username and password';
-    err.classList.add('show'); return;
-  }
-
+  if (!u || !p) { err.textContent = 'Please enter username and password'; err.classList.add('show'); return; }
   var btn = document.querySelector('.admin-login-btn');
   var ot = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...'; btn.disabled = true;
-
   var inputHash = hashPassword(p);
-
   var correctHash = null;
-  try {
-    var config = await withTimeout(db.collection('config').doc('store').get(), 5000);
-    if (config.exists && config.data().adminPassHash) {
-      correctHash = config.data().adminPassHash;
-    }
-  } catch (e) { }
-
-  if (!correctHash) {
-    correctHash = ADMIN_INIT_HASH;
-  }
-
-  if (inputHash !== correctHash) {
-    err.textContent = 'Invalid username or password';
-    err.classList.add('show');
-    btn.innerHTML = ot; btn.disabled = false;
-    return;
-  }
-
+  try { var config = await withTimeout(db.collection('config').doc('store').get(), 5000); if (config.exists && config.data().adminPassHash) { correctHash = config.data().adminPassHash; } } catch (e) { }
+  if (!correctHash) { correctHash = ADMIN_INIT_HASH; }
+  if (inputHash !== correctHash) { err.textContent = 'Invalid username or password'; err.classList.add('show'); btn.innerHTML = ot; btn.disabled = false; return; }
   document.body.style.overflow = 'auto';
   document.getElementById('adminLoginOv').style.display = 'none';
   document.getElementById('adminPanel').style.display = 'flex';
@@ -290,9 +263,6 @@ async function adminDoLogout() {
   await refreshStoreData(); showPage('home'); showToast('Admin logged out');
 }
 
-/* ==========================================
-   অ্যাডমিন সেকশন রেন্ডার
-   ========================================== */
 async function adminShowSec(sec) {
   document.querySelectorAll('.admin-sec').forEach(function (s) { s.classList.remove('active'); });
   document.querySelectorAll('.admin-snav a').forEach(function (a) { a.classList.remove('active'); });
@@ -405,13 +375,18 @@ async function renderAdminOrders() {
 
 async function openOrderDetailModal(id) {
   orders = await loadOrders(); var o = orders.find(function (x) { return x.id === id; }); if (!o) return;
-  var h = '<div class="adm-order-info"><div class="adm-order-info-card"><h4>Customer</h4><p><strong>Name:</strong> ' + o.customer.name + '</p><p><strong>Phone:</strong> ' + o.customer.phone + '</p><p><strong>Email:</strong> ' + o.customer.email + '</p></div><div class="adm-order-info-card"><h4>Shipping</h4><p>' + o.customer.address + '</p></div></div>';
-  h += '<div class="adm-order-info" style="margin-bottom:20px"><div class="adm-order-info-card"><h4>Payment</h4><p>' + (o.payMethod === 'cod' ? 'COD' : o.payMethod) + '</p><p>' + (o.paid ? '<span class="adm-paid-badge">Paid</span>' : '<span class="adm-unpaid-badge">Unpaid</span>') + '</p>';
-  if(o.txnId && o.txnId !== 'N/A') { h += '<p><strong>TrxID:</strong> ' + o.txnId + '</p>'; }
+  var h = '<div class="adm-order-info"><div class="adm-order-info-card"><h4>Customer</h4><p><strong>Name:</strong> ' + o.customer.name + '</p><p><strong>Phone:</strong> ' + o.customer.phone + '</p><p><strong>Email:</strong> ' + o.customer.email + '</p></div><div class="adm-order-info-card"><h4>Shipping</h4><p>' + o.customer.address + '</p>';
+  if (o.deliveryArea) h += '<p style="margin-top:8px"><strong>Area:</strong> ' + o.deliveryArea + '</p>';
+  h += '</div></div>';
+  h += '<div class="adm-order-info" style="margin-bottom:20px"><div class="adm-order-info-card"><h4>Payment</h4><p>' + (o.payMethod === 'cod' ? 'Cash on Delivery' : (o.payMethod === 'bkash' ? 'bKash' : (o.payMethod === 'nagad' ? 'Nagad' : o.payMethod))) + '</p><p>' + (o.paid ? '<span class="adm-paid-badge">Paid</span>' : '<span class="adm-unpaid-badge">Unpaid</span>') + '</p>';
+  if (o.txnId && o.txnId !== 'N/A') { h += '<p style="margin-top:8px"><strong>Transaction ID:</strong> <span style="color:var(--gold)">' + o.txnId + '</span></p>'; }
   h += '</div><div class="adm-order-info-card"><h4>Order</h4><p><span style="color:var(--gold)">' + o.id + '</span></p><p>' + o.date + '</p><span class="adm-status ' + o.status + '">' + o.status + '</span></div></div>';
   h += '<h4 style="font-family:var(--fh);font-size:13px;color:var(--gold);margin-bottom:12px">Items</h4><div class="adm-order-items">';
   o.items.forEach(function (it) { h += '<div class="adm-order-item"><img src="' + it.image + '" onerror="this.src=\'https://via.placeholder.com/50x60/121212/d4a017?text=Img\'"><div class="adm-order-item-info"><h5>' + it.name + '</h5><p>' + (it.color || '') + (it.size ? ' | ' + it.size : '') + ' x ' + it.qty + '</p></div><div class="adm-order-item-price">' + fmtPrice(it.price * it.qty) + '</div></div>'; });
-  h += '</div><div class="adm-order-total"><span>Total:</span><strong>' + fmtPrice(o.total) + '</strong></div>';
+  h += '</div><div class="adm-order-total">';
+  if (o.subtotal !== undefined) { h += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:var(--lg)"><span>Subtotal</span><span>' + fmtPrice(o.subtotal) + '</span></div>'; }
+  if (o.deliveryCharge) { h += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:var(--lg)"><span>Delivery (' + (o.deliveryArea || '') + ')</span><span>' + fmtPrice(o.deliveryCharge) + '</span></div>'; }
+  h += '<div style="display:flex;justify-content:space-between"><span>Total:</span><strong>' + fmtPrice(o.total) + '</strong></div></div>';
   h += '<div style="margin-top:20px;display:flex;align-items:center;gap:16px"><label style="font-family:var(--fh);font-size:12px;color:var(--lg)">Status:</label><select id="admOrderStatus" style="padding:10px 16px;background:var(--bg);border:1px solid rgba(255,255,255,.08);color:var(--w);outline:none">';
   ['pending', 'processing', 'shipped', 'delivered'].forEach(function (s) { h += '<option value="' + s + '"' + (o.status === s ? ' selected' : '') + '>' + s.charAt(0).toUpperCase() + s.slice(1) + '</option>'; });
   h += '</select><button class="adm-btn" onclick="updateOrderStatus(\'' + o.id + '\')"><i class="fas fa-save"></i> Update</button></div>';
@@ -421,12 +396,9 @@ function closeAdmOrderModal() { document.getElementById('admOrderOv').classList.
 async function updateOrderStatus(id) { var s = document.getElementById('admOrderStatus').value; try { await updateOrderInDB(id, { status: s }); closeAdmOrderModal(); await renderAdminOrders(); showToast('Updated to ' + s); } catch (e) { showToast('Error'); } }
 async function deleteOrder(id) { if (!confirm('Delete ' + id + '?')) return; try { await deleteOrderFromDB(id); await renderAdminOrders(); showToast('Deleted'); } catch (e) { showToast('Error'); } }
 
-/* ==========================================
-   SETTINGS — পাসওয়ার্ড হ্যাশ করে সেভ
-   ========================================== */
 function renderAdminSettings() {
   var h = '<div class="adm-settings-card"><h3>Change Admin Password</h3>';
-  h += '<p style="font-size:12px;color:var(--success);margin-bottom:16px"><i class="fas fa-shield-halved"></i> Passwords are hashed with SHA-256 before storing. Plain text never leaves your browser.</p>';
+  h += '<p style="font-size:12px;color:var(--success);margin-bottom:16px"><i class="fas fa-shield-halved"></i> Passwords are hashed with SHA-256 before storing.</p>';
   h += '<div class="adm-form-group"><label>Current Password</label><input type="password" id="setCurrPass"></div>';
   h += '<div class="adm-form-group"><label>New Password</label><input type="password" id="setNewPass"></div>';
   h += '<div class="adm-form-group"><label>Confirm New Password</label><input type="password" id="setConfPass"></div>';
@@ -445,35 +417,16 @@ async function changeAdminPass() {
   var curr = document.getElementById('setCurrPass').value;
   var newP = document.getElementById('setNewPass').value;
   var conf = document.getElementById('setConfPass').value;
-
   if (!curr || !newP || !conf) { showToast('Fill in all fields'); return; }
   if (newP.length < 4) { showToast('Min 4 characters'); return; }
   if (newP !== conf) { showToast('Passwords do not match'); return; }
-
   var currHash = hashPassword(curr);
-
   var savedHash = null;
-  try {
-    var config = await withTimeout(db.collection('config').doc('store').get(), 5000);
-    if (config.exists && config.data().adminPassHash) {
-      savedHash = config.data().adminPassHash;
-    }
-  } catch (e) { }
-
+  try { var config = await withTimeout(db.collection('config').doc('store').get(), 5000); if (config.exists && config.data().adminPassHash) { savedHash = config.data().adminPassHash; } } catch (e) { }
   if (!savedHash) savedHash = ADMIN_INIT_HASH;
-
   if (currHash !== savedHash) { showToast('Current password is incorrect'); return; }
-
   var newHash = hashPassword(newP);
-  try {
-    await db.collection('config').doc('store').set({ adminPassHash: newHash }, { merge: true });
-    document.getElementById('setCurrPass').value = '';
-    document.getElementById('setNewPass').value = '';
-    document.getElementById('setConfPass').value = '';
-    showToast('Password changed successfully!');
-  } catch (e) {
-    showToast('Error saving password');
-  }
+  try { await db.collection('config').doc('store').set({ adminPassHash: newHash }, { merge: true }); document.getElementById('setCurrPass').value = ''; document.getElementById('setNewPass').value = ''; document.getElementById('setConfPass').value = ''; showToast('Password changed successfully!'); } catch (e) { showToast('Error saving password'); }
 }
 
 function exportData() { var b = new Blob([JSON.stringify({ products: products, orders: orders }, null, 2)], { type: 'application/json' }); var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'fashion_garage_data.json'; a.click(); showToast('Exported'); }
@@ -528,157 +481,406 @@ function initFadeIn() { var els = document.querySelectorAll('.fade-in:not(.visib
    ========================================== */
 function productCard(p) {
   var l = wishlist.has(p.id), h = '<div class="p-card" onclick="openPM(' + p.id + ')"><div class="p-img"><img src="' + p.image + '" alt="' + escHtml(p.name) + '" onerror="this.src=\'https://via.placeholder.com/400x500/121212/d4a017?text=No+Image\'"><button class="wl-btn' + (l ? ' liked' : '') + '" onclick="event.stopPropagation();toggleWishlist(' + p.id + ')"><i class="' + (l ? 'fas' : 'far') + ' fa-heart"></i></button>';
-  if (p.tag) h += '<div class="p-tag">' + p.tag + '</div>'; if (!p.inStock) h += '<div class="p-oos-tag">Out of Stock</div>';
+  if (p.tag) h += '<div class="p-tag">' + p.tag + '</div>';
+  if (!p.inStock) h += '<div class="p-oos-tag">Out of Stock</div>';
   h += '</div><div class="p-details"><h4>' + escHtml(p.name) + '</h4><div class="p-price"><span class="cur">' + fmtPrice(p.price) + '</span>';
   if (p.oldPrice) h += '<span class="old">' + fmtPrice(p.oldPrice) + '</span>';
-  h += '</div><button class="qv-btn' + (!p.inStock ? ' oos' : '') + '" onclick="event.stopPropagation();openPM(' + p.id + ')">' + (!p.inStock ? 'Out of Stock' : 'ORDER NOW') + '</button></div></div>';
+  h += '</div>';
+  if (p.inStock) h += '<button class="qv-btn" onclick="event.stopPropagation();openPM(' + p.id + ')">Quick View</button>';
+  else h += '<button class="qv-btn oos" onclick="event.stopPropagation()">Out of Stock</button>';
+  h += '</div></div>';
   return h;
 }
 
 /* ==========================================
-   PRODUCT MODAL FUNCTIONS
+   TRENDING / HOME
+   ========================================== */
+function renderTrending() {
+  var grid = document.getElementById('trendGrid');
+  if (!grid) return;
+  var trending = products.filter(function (p) { return p.tag === 'New' || p.tag === 'Hot'; }).slice(0, 8);
+  if (!trending.length) trending = products.slice(0, 8);
+  if (!trending.length) { grid.innerHTML = '<div class="no-products"><i class="fas fa-box-open"></i><br>No products yet</div>'; return; }
+  grid.innerHTML = trending.map(function (p) { return productCard(p); }).join('');
+}
+
+/* ==========================================
+   PRODUCT MODAL — কালার/সাইজ অপশনাল, লগইন চেক
    ========================================== */
 function openPM(id) {
-  var p = products.find(function(x){ return x.id === id; });
-  if(!p) return;
-  pmCurrentProduct = p; pmSelectedColor = ''; pmSelectedSize = ''; pmQuantity = 1;
+  var p = products.find(function (x) { return x.id === id; });
+  if (!p) return;
+  pmCurrentProduct = p;
+  pmSelectedColor = '';
+  pmSelectedSize = '';
+  pmQuantity = 1;
+
   document.getElementById('pmImg').src = p.image;
   document.getElementById('pmName').textContent = p.name;
-  document.getElementById('pmPrice').innerHTML = '<span class="cur">' + fmtPrice(p.price) + '</span>' + (p.oldPrice ? '<span class="old">' + fmtPrice(p.oldPrice) + '</span>' : '');
-  
-  var tagHtml = '';
-  if(!p.inStock) tagHtml = '<div class="pm-oos-tag">Out of Stock</div>';
-  else if(p.tag) tagHtml = '<div class="pm-tag">' + p.tag + '</div>';
-  document.getElementById('pmTag').innerHTML = tagHtml;
 
-  var cHtml = '';
-  p.colors.forEach(function(c){ cHtml += '<div class="pm-cswatch' + (LIGHT_COLORS.indexOf(c) !== -1 ? ' light-c' : '') + '" style="background:' + c + '" onclick="selectPMColor(this,\'' + c + '\')"></div>'; });
-  document.getElementById('pmColors').innerHTML = cHtml;
+  // ট্যাগ / আউট অফ স্টক
+  if (p.tag) { document.getElementById('pmTag').innerHTML = '<div class="pm-tag">' + p.tag + '</div>'; }
+  else if (!p.inStock) { document.getElementById('pmTag').innerHTML = '<div class="pm-oos-tag">Out of Stock</div>'; }
+  else { document.getElementById('pmTag').innerHTML = ''; }
 
-  var sHtml = '';
-  var sizes = p.category === 'perfume' ? PERFUME_SIZES : ADMIN_SIZES;
-  sizes.forEach(function(s){ if(p.sizes.indexOf(s) !== -1) sHtml += '<div class="pm-sbtn" onclick="selectPMSize(this,\'' + s + '\')">' + s + '</div>'; });
-  document.getElementById('pmSizes').innerHTML = sHtml;
+  // প্রাইস
+  var priceHtml = '<span class="cur">' + fmtPrice(p.price) + '</span>';
+  if (p.oldPrice) priceHtml += '<span class="old">' + fmtPrice(p.oldPrice) + '</span>';
+  document.getElementById('pmPrice').innerHTML = priceHtml;
+
+  // কালার — শুধুমাত্র থাকলে দেখাবে, না থাকলে লুকাবে
+  var colorsDiv = document.getElementById('pmColors');
+  var colorsLabel = colorsDiv.previousElementSibling;
+  if (p.colors && p.colors.length) {
+    colorsLabel.style.display = '';
+    colorsDiv.style.display = '';
+    colorsDiv.innerHTML = '';
+    p.colors.forEach(function (c) {
+      var isLight = LIGHT_COLORS.indexOf(c) !== -1;
+      colorsDiv.innerHTML += '<div class="pm-cswatch' + (isLight ? ' light-c' : '') + '" style="background:' + c + '" onclick="selectPMColor(this,\'' + c + '\')"></div>';
+    });
+  } else {
+    colorsLabel.style.display = 'none';
+    colorsDiv.style.display = 'none';
+  }
+
+  // সাইজ — শুধুমাত্র থাকলে দেখাবে, না থাকলে লুকাবে
+  var sizesDiv = document.getElementById('pmSizes');
+  var sizesLabel = sizesDiv.previousElementSibling;
+  if (p.sizes && p.sizes.length) {
+    sizesLabel.style.display = '';
+    sizesDiv.style.display = '';
+    sizesDiv.innerHTML = '';
+    p.sizes.forEach(function (s) {
+      sizesDiv.innerHTML += '<div class="pm-sbtn" onclick="selectPMSize(this,\'' + s + '\')">' + s + '</div>';
+    });
+  } else {
+    sizesLabel.style.display = 'none';
+    sizesDiv.style.display = 'none';
+  }
+
+  // কোয়ান্টিটি
   document.getElementById('pmQtyVal').textContent = '1';
-  
-  var btn = document.getElementById('pmAddBtn');
-  if(!p.inStock){ btn.textContent = 'OUT OF STOCK'; btn.classList.add('oos'); } else { btn.textContent = 'ADD TO CART'; btn.classList.remove('oos'); }
+
+  // অ্যাড টু কার্ট বাটন
+  var addBtn = document.getElementById('pmAddBtn');
+  if (!p.inStock) {
+    addBtn.textContent = 'Out of Stock';
+    addBtn.className = 'pm-add oos';
+    addBtn.disabled = true;
+  } else {
+    addBtn.textContent = 'Add to Cart';
+    addBtn.className = 'pm-add';
+    addBtn.disabled = false;
+  }
 
   document.getElementById('pmOv').classList.add('active');
   document.getElementById('pmModal').classList.add('active');
   document.body.style.overflow = 'hidden';
 }
-function closePM() { document.getElementById('pmOv').classList.remove('active'); document.getElementById('pmModal').classList.remove('active'); document.body.style.overflow = ''; pmCurrentProduct = null; }
-function selectPMColor(el, c) { document.querySelectorAll('.pm-cswatch').forEach(function(e){ e.classList.remove('active'); }); el.classList.add('active'); pmSelectedColor = c; }
-function selectPMSize(el, s) { document.querySelectorAll('.pm-sbtn').forEach(function(e){ e.classList.remove('active'); }); el.classList.add('active'); pmSelectedSize = s; }
-function pmQty(d) { pmQuantity += d; if(pmQuantity < 1) pmQuantity = 1; document.getElementById('pmQtyVal').textContent = pmQuantity; }
+
+function closePM() {
+  document.getElementById('pmOv').classList.remove('active');
+  document.getElementById('pmModal').classList.remove('active');
+  var isOtherOpen = document.querySelector('.cart-ov.active, .wl-ov.active, .login-ov.active, .co-ov.active');
+  if (!isOtherOpen) document.body.style.overflow = '';
+  pmCurrentProduct = null;
+  pmSelectedColor = '';
+  pmSelectedSize = '';
+  pmQuantity = 1;
+}
+
+function selectPMColor(el, color) {
+  document.querySelectorAll('.pm-cswatch').forEach(function (s) { s.classList.remove('active'); });
+  el.classList.add('active');
+  pmSelectedColor = color;
+}
+
+function selectPMSize(el, size) {
+  document.querySelectorAll('.pm-sbtn').forEach(function (s) { s.classList.remove('active'); });
+  el.classList.add('active');
+  pmSelectedSize = size;
+}
+
+function pmQty(delta) {
+  pmQuantity = Math.max(1, pmQuantity + delta);
+  document.getElementById('pmQtyVal').textContent = pmQuantity;
+}
 
 /* ==========================================
-   CART & CHECKOUT FUNCTIONS
+   ADD TO CART — লগইন চেক + কালার/সাইজ অপশনাল
    ========================================== */
 function pmAddToCart() {
+  if (!pmCurrentProduct || !pmCurrentProduct.inStock) return;
+
+  // ★ লগইন চেক — লগইন না থাকলে লগইন চাইবে
   if (!isLoggedIn()) {
-    openLogin(); // শুধু লগইন পেজ ওপেন করবে, অটোমেটিক কিছু করবে না
+    pendingCartAction = function () { pmAddToCart(); };
+    openLogin();
     return;
   }
-  if (!pmCurrentProduct) return;
-  if (!pmSelectedColor) { showToast('Please select a color'); return; }
-  if (!pmSelectedSize) { showToast('Please select a size'); return; }
-  var existing = cart.find(function(c) { return c.id === pmCurrentProduct.id && c.color === pmSelectedColor && c.size === pmSelectedSize; });
-  if (existing) { existing.qty += pmQuantity; } else { cart.push({ id: pmCurrentProduct.id, name: pmCurrentProduct.name, price: pmCurrentProduct.price, color: pmSelectedColor, size: pmSelectedSize, qty: pmQuantity, image: pmCurrentProduct.image }); }
-  updateCartUI(); showToast('Added to cart!'); closePM();
+
+  var p = pmCurrentProduct;
+
+  // কালার শুধু তখনই ম্যান্ডেটরি যখন প্রোডাক্টে কালার আছে
+  if (p.colors && p.colors.length && !pmSelectedColor) {
+    showToast('Please select a color');
+    return;
+  }
+
+  // সাইজ শুধু তখনই ম্যান্ডেটরি যখন প্রোডাক্টে সাইজ আছে
+  if (p.sizes && p.sizes.length && !pmSelectedSize) {
+    showToast('Please select a size');
+    return;
+  }
+
+  var item = {
+    id: p.id,
+    name: p.name,
+    image: p.image,
+    price: p.price,
+    color: pmSelectedColor || '',
+    size: pmSelectedSize || '',
+    qty: pmQuantity
+  };
+
+  var existing = cart.find(function (c) {
+    return c.id === item.id && c.color === item.color && c.size === item.size;
+  });
+  if (existing) { existing.qty += item.qty; }
+  else { cart.push(item); }
+
+  updateCartBadge();
+  closePM();
+  showToast('Added to cart!');
 }
 
-function updateCartUI() {
-  document.getElementById('cartBadge').textContent = cart.reduce(function(s, i) { return s + i.qty; }, 0);
-  var h = '';
-  if (!cart.length) { h = '<div class="cart-empty"><i class="fas fa-shopping-bag"></i><p>Your bag is empty</p></div>'; }
-  else { cart.forEach(function(item, idx) { h += '<div class="cart-item"><div class="cart-item-img"><img src="' + item.image + '" onerror="this.src=\'https://via.placeholder.com/80x100/121212/d4a017?text=Img\'"></div><div class="cart-item-info"><h4>' + item.name + '</h4><div class="cart-item-meta"><span class="cart-item-color"><span class="dot" style="background:' + item.color + '"></span>' + item.color + '</span><span class="cart-item-size">' + item.size + '</span></div><div class="cart-item-qty"><button onclick="changeCartQty(' + idx + ',-1)"><i class="fas fa-minus"></i></button><span>' + item.qty + '</span><button onclick="changeCartQty(' + idx + ',1)"><i class="fas fa-plus"></i></button></div><div class="cart-item-price">' + fmtPrice(item.price * item.qty) + '</div></div><button class="cart-item-remove" onclick="removeCartItem(' + idx + ')"><i class="fas fa-times"></i></button></div>'; }); }
-  document.getElementById('cartItems').innerHTML = h;
-  document.getElementById('cartTotal').textContent = fmtPrice(cart.reduce(function(s, i) { return s + (i.price * i.qty); }, 0));
+/* ==========================================
+   CART SIDEBAR
+   ========================================== */
+function openCart() {
+  renderCart();
+  document.getElementById('cartOv').classList.add('active');
+  document.getElementById('cartSb').classList.add('active');
+  document.body.style.overflow = 'hidden';
 }
-function changeCartQty(i, d) { cart[i].qty += d; if (cart[i].qty < 1) cart.splice(i, 1); updateCartUI(); }
-function removeCartItem(i) { cart.splice(i, 1); updateCartUI(); }
-function openCart() { document.getElementById('cartOv').classList.add('active'); document.getElementById('cartSb').classList.add('active'); document.body.style.overflow = 'hidden'; }
-function closeCart() { document.getElementById('cartOv').classList.remove('active'); document.getElementById('cartSb').classList.remove('active'); document.body.style.overflow = ''; }
+function closeCart() {
+  document.getElementById('cartOv').classList.remove('active');
+  document.getElementById('cartSb').classList.remove('active');
+  var isOtherOpen = document.querySelector('.pm-ov.active, .wl-ov.active, .login-ov.active, .co-ov.active');
+  if (!isOtherOpen) document.body.style.overflow = '';
+}
+function renderCart() {
+  var el = document.getElementById('cartItems');
+  if (!cart.length) { el.innerHTML = '<div class="cart-empty"><i class="fas fa-shopping-bag"></i><p>Your bag is empty</p></div>'; document.getElementById('cartTotal').textContent = '৳0'; return; }
+  var h = '';
+  cart.forEach(function (item, idx) {
+    h += '<div class="cart-item"><div class="cart-item-img"><img src="' + item.image + '" onerror="this.src=\'https://via.placeholder.com/80x100/121212/d4a017?text=Img\'"></div><div class="cart-item-info"><h4>' + escHtml(item.name) + '</h4><div class="cart-item-meta">';
+    if (item.color) h += '<span class="cart-item-color"><span class="dot" style="background:' + item.color + '"></span>' + item.color + '</span>';
+    if (item.size) h += '<span class="cart-item-size">' + item.size + '</span>';
+    h += '</div><div class="cart-item-qty"><button onclick="updateCartQty(' + idx + ',-1)"><i class="fas fa-minus"></i></button><span>' + item.qty + '</span><button onclick="updateCartQty(' + idx + ',1)"><i class="fas fa-plus"></i></button></div><div class="cart-item-price">' + fmtPrice(item.price * item.qty) + '</div></div><button class="cart-item-remove" onclick="removeFromCart(' + idx + ')"><i class="fas fa-times"></i></button></div>';
+  });
+  el.innerHTML = h;
+  var total = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
+  document.getElementById('cartTotal').textContent = fmtPrice(total);
+}
+function updateCartBadge() {
+  var count = cart.reduce(function (s, i) { return s + i.qty; }, 0);
+  document.getElementById('cartBadge').textContent = count;
+}
+function removeFromCart(idx) { cart.splice(idx, 1); updateCartBadge(); renderCart(); }
+function updateCartQty(idx, delta) { cart[idx].qty += delta; if (cart[idx].qty <= 0) cart.splice(idx, 1); updateCartBadge(); renderCart(); }
 
 /* ==========================================
    WISHLIST
    ========================================== */
-function toggleWishlist(id) {
-  if (wishlist.has(id)) { wishlist.delete(id); showToast('Removed from wishlist'); } else { wishlist.add(id); showToast('Added to wishlist'); }
-  saveWishlist(); updateCartUI(); renderCurrentGrid();
+function openWishlist() {
+  renderWishlist();
+  document.getElementById('wlOv').classList.add('active');
+  document.getElementById('wlSb').classList.add('active');
+  document.body.style.overflow = 'hidden';
 }
-function openWishlist() { document.getElementById('wlOv').classList.add('active'); document.getElementById('wlSb').classList.add('active'); document.body.style.overflow = 'hidden'; renderWishlist(); }
-function closeWishlist() { document.getElementById('wlOv').classList.remove('active'); document.getElementById('wlSb').classList.remove('active'); document.body.style.overflow = ''; }
+function closeWishlist() {
+  document.getElementById('wlOv').classList.remove('active');
+  document.getElementById('wlSb').classList.remove('active');
+  var isOtherOpen = document.querySelector('.pm-ov.active, .cart-ov.active, .login-ov.active, .co-ov.active');
+  if (!isOtherOpen) document.body.style.overflow = '';
+}
+function toggleWishlist(id) {
+  if (wishlist.has(id)) { wishlist.delete(id); showToast('Removed from wishlist'); }
+  else { wishlist.add(id); showToast('Added to wishlist'); }
+  saveWishlist(); updateWlBadge();
+  if (currentPageInfo.gridId) { initCategoryPage(currentPageInfo.page, currentPageInfo.gridId, currentPageInfo.countId, currentPageInfo.filterId, currentPageInfo.subFilter); }
+  else { renderTrending(); }
+}
 function renderWishlist() {
-  var h = ''; var items = products.filter(function(p) { return wishlist.has(p.id); });
-  if (!items.length) { h = '<div class="cart-empty"><i class="fas fa-heart"></i><p>Your wishlist is empty</p></div>'; }
-  else { items.forEach(function(p) { h += '<div class="cart-item"><div class="cart-item-img"><img src="' + p.image + '" onclick="closeWishlist();openPM(' + p.id + ')" style="cursor:pointer" onerror="this.src=\'https://via.placeholder.com/80x100/121212/d4a017?text=Img\'"></div><div class="cart-item-info"><h4>' + p.name + '</h4><div class="cart-item-price">' + fmtPrice(p.price) + '</div><div class="wl-item-actions"><button class="wl-action-btn wl-add-cart" onclick="closeWishlist();openPM(' + p.id + ')">View</button><button class="wl-action-btn wl-remove" onclick="toggleWishlist(' + p.id + ')">Remove</button></div></div></div>'; }); }
-  document.getElementById('wlItems').innerHTML = h; document.getElementById('wlBadge').textContent = items.length;
+  var el = document.getElementById('wlItems');
+  var items = products.filter(function (p) { return wishlist.has(p.id); });
+  if (!items.length) { el.innerHTML = '<div class="cart-empty"><i class="fas fa-heart"></i><p>Your wishlist is empty</p></div>'; return; }
+  var h = '';
+  items.forEach(function (p) {
+    h += '<div class="cart-item"><div class="cart-item-img"><img src="' + p.image + '" onerror="this.src=\'https://via.placeholder.com/80x100/121212/d4a017?text=Img\'"></div><div class="cart-item-info"><h4>' + escHtml(p.name) + '</h4><div class="cart-item-price">' + fmtPrice(p.price) + '</div><div class="wl-item-actions"><button class="wl-action-btn wl-add-cart" onclick="wlAddToCart(' + p.id + ')">Add to Cart</button><button class="wl-action-btn wl-remove" onclick="toggleWishlist(' + p.id + ');renderWishlist()">Remove</button></div></div></div>';
+  });
+  el.innerHTML = h;
+}
+function updateWlBadge() { document.getElementById('wlBadge').textContent = wishlist.size; }
+
+// উইশলিস্ট থেকে কার্টে — লগইন চেক
+function wlAddToCart(id) {
+  if (!isLoggedIn()) {
+    pendingCartAction = function () { wlAddToCart(id); };
+    openLogin();
+    return;
+  }
+  var p = products.find(function (x) { return x.id === id; });
+  if (!p) return;
+  var item = { id: p.id, name: p.name, image: p.image, price: p.price, color: '', size: '', qty: 1 };
+  var existing = cart.find(function (c) { return c.id === item.id && !c.color && !c.size; });
+  if (existing) { existing.qty += 1; } else { cart.push(item); }
+  updateCartBadge();
+  showToast('Added to cart!');
 }
 
 /* ==========================================
    SEARCH
    ========================================== */
-function openSearch() { document.getElementById('searchOv').classList.add('active'); document.body.style.overflow = 'hidden'; setTimeout(function() { document.getElementById('searchInput').focus(); }, 300); }
-function closeSearch() { document.getElementById('searchOv').classList.remove('active'); document.body.style.overflow = ''; document.getElementById('searchInput').value = ''; document.getElementById('searchResults').innerHTML = ''; }
+function openSearch() {
+  document.getElementById('searchOv').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  setTimeout(function () { document.getElementById('searchInput').focus(); }, 300);
+}
+function closeSearch() {
+  document.getElementById('searchOv').classList.remove('active');
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  document.body.style.overflow = '';
+}
 function performSearch(q) {
-  var res = document.getElementById('searchResults'); if (q.length < 2) { res.innerHTML = ''; return; }
-  var ql = q.toLowerCase(); var found = products.filter(function(p) { return p.name.toLowerCase().indexOf(ql) !== -1 || p.category.indexOf(ql) !== -1; });
-  if (!found.length) { res.innerHTML = '<div class="search-no-result"><i class="fas fa-search"></i><p>No products found</p></div>'; return; }
-  var h = '<div class="search-results-grid">'; found.forEach(function(p) { h += productCard(p); }); h += '</div>'; res.innerHTML = h;
+  var el = document.getElementById('searchResults');
+  if (!q.trim()) { el.innerHTML = ''; return; }
+  q = q.toLowerCase();
+  var results = products.filter(function (p) { return p.name.toLowerCase().indexOf(q) !== -1 || p.category.toLowerCase().indexOf(q) !== -1; });
+  if (!results.length) { el.innerHTML = '<div class="search-no-result"><i class="fas fa-search"></i><p>No products found for "' + escHtml(q) + '"</p></div>'; return; }
+  el.innerHTML = '<div class="search-results-grid">' + results.map(function (p) { return productCard(p); }).join('') + '</div>';
 }
 
 /* ==========================================
-   পেমেন্ট টগল এবং চেকআউট
+   CATEGORY PAGE + FILTERS
    ========================================== */
-function toggleTxnField() {
-  var method = document.getElementById('coPayMethod').value;
-  var payInfoDiv = document.getElementById('coPayInfo');
-  var txnField = document.getElementById('coTxnField');
-  var total = cart.reduce(function(sum, item) { return sum + (item.price * item.qty); }, 0);
-  var totalFormatted = fmtPrice(total);
+function initCategoryPage(page, gid, cid, fid, subFilter) {
+  var filtered = products.slice();
+  if (page === 'men') filtered = filtered.filter(function (p) { return p.category === 'men'; });
+  else if (page === 'women') filtered = filtered.filter(function (p) { return p.category === 'women'; });
+  else if (page === 'accessories' && subFilter) filtered = filtered.filter(function (p) { return p.category === subFilter; });
+  else if (page === 'accessories') filtered = filtered.filter(function (p) { return ['watch', 'bag', 'perfume', 'jewelry', 'sunglasses', 'homedecor'].indexOf(p.category) !== -1; });
+  else if (page === 'offer') filtered = filtered.filter(function (p) { return p.oldPrice > 0; });
 
-  if (method === 'cod') {
-    payInfoDiv.style.display = 'none';
-    txnField.style.display = 'none';
-  } else {
-    var number = (method === 'bkash') ? BKASH_NUMBER : NAGAD_NUMBER;
-    var methodName = (method === 'bkash') ? 'bKash' : 'Nagad';
-    
-    var html = '<div class="payment-info-box">';
-    html += '<p><span class="pi-label">Send Money To (' + methodName + '):</span>';
-    html += '<strong>' + number + '</strong></p>';
-    html += '<p><span class="pi-label">Total Amount:</span>';
-    html += '<strong>' + totalFormatted + '</strong></p>';
-    html += '<div class="pi-note"><i class="fas fa-info-circle"></i> অনুগ্রহ করে উপরোক্ত নাম্বারে <strong>"Send Money"</strong> করুন এবং নিচে আপনার Transaction ID টি প্রদান করুন।</div>';
-    html += '</div>';
-    
-    payInfoDiv.innerHTML = html;
-    payInfoDiv.style.display = 'block';
-    txnField.style.display = 'block';
+  if (_activeSubFilter) filtered = filtered.filter(function (p) { return p.subCategory === _activeSubFilter; });
+  if (_activeSizes.length) filtered = filtered.filter(function (p) { return p.sizes && p.sizes.some(function (s) { return _activeSizes.indexOf(s) !== -1; }); });
+
+  var priceSlider = document.getElementById('priceRange');
+  if (priceSlider) {
+    var maxPrice = parseInt(priceSlider.value);
+    filtered = filtered.filter(function (p) { return p.price <= maxPrice; });
   }
+
+  document.getElementById(gid).innerHTML = filtered.length ? filtered.map(function (p) { return productCard(p); }).join('') : '<div class="no-products"><i class="fas fa-box-open"></i><br>No products found</div>';
+  document.getElementById(cid).textContent = filtered.length + ' products found';
+  renderFilterSidebar(page, fid, subFilter);
 }
 
+function renderFilterSidebar(page, fid, subFilter) {
+  var el = document.getElementById(fid);
+  if (!el) return;
+  var h = '';
+
+  if (page === 'accessories') {
+    h += '<div class="filter-group"><h4>Sub Category</h4><div class="filter-sub-btns">';
+    h += '<button class="fsub-btn' + (!_activeSubFilter ? ' active' : '') + '" onclick="_activeSubFilter=\'\';initCategoryPage(\'' + page + '\',\'' + currentPageInfo.gridId + '\',\'' + currentPageInfo.countId + '\',\'' + fid + '\',null)"><i class="fas fa-check"></i> All</button>';
+    var cats = SUB_CATS[subFilter] || [];
+    cats.forEach(function (c) {
+      h += '<button class="fsub-btn' + (_activeSubFilter === c ? ' active' : '') + '" onclick="_activeSubFilter=\'' + c + '\';initCategoryPage(\'' + page + '\',\'' + currentPageInfo.gridId + '\',\'' + currentPageInfo.countId + '\',\'' + fid + '\',\'' + subFilter + '\')"><i class="fas fa-check"></i> ' + (SUB_CAT_LABELS[c] || c) + '</button>';
+    });
+    h += '</div></div>';
+  }
+
+  var pageSizes = (subFilter === 'perfume') ? PERFUME_SIZES : ADMIN_SIZES;
+  h += '<div class="filter-group"><h4>Size</h4><div class="filter-size-btns">';
+  pageSizes.forEach(function (s) {
+    h += '<button class="fsize-btn' + (_activeSizes.indexOf(s) !== -1 ? ' active' : '') + '" onclick="toggleSizeFilter(\'' + s + '\')">' + s + '</button>';
+  });
+  h += '</div></div>';
+
+  h += '<div class="filter-group"><h4>Price Range</h4><div class="price-range-wrap"><input type="range" id="priceRange" min="0" max="50000" value="50000" oninput="document.getElementById(\'priceRangeVal\').textContent=\'৳\'+Number(this.value).toLocaleString();applyFilters()"><div class="price-range-val" id="priceRangeVal">৳50,000</div></div></div>';
+
+  h += '<button class="clear-filter-btn" onclick="_activeSubFilter=\'\';_activeSizes=[];var pr=document.getElementById(\'priceRange\');if(pr){pr.value=50000;document.getElementById(\'priceRangeVal\').textContent=\'৳50,000\';}initCategoryPage(\'' + page + '\',\'' + currentPageInfo.gridId + '\',\'' + currentPageInfo.countId + '\',\'' + fid + '\',' + (subFilter ? '\'' + subFilter + '\'' : 'null') + ')">Clear Filters</button>';
+
+  el.innerHTML = h;
+}
+
+function toggleSizeFilter(size) {
+  var idx = _activeSizes.indexOf(size);
+  if (idx === -1) _activeSizes.push(size);
+  else _activeSizes.splice(idx, 1);
+  initCategoryPage(currentPageInfo.page, currentPageInfo.gridId, currentPageInfo.countId, currentPageInfo.filterId, currentPageInfo.subFilter);
+}
+
+function applyFilters() {
+  initCategoryPage(currentPageInfo.page, currentPageInfo.gridId, currentPageInfo.countId, currentPageInfo.filterId, currentPageInfo.subFilter);
+}
+
+/* ==========================================
+   CHECKOUT — বিকাশ/নগদ পেমেন্ট ফ্লো
+   ========================================== */
 function openCheckout() {
-  if (!cart.length) { showToast('Your cart is empty'); return; }
+  if (!cart.length) { showToast('Cart is empty'); return; }
+
+  // ★ লগইন চেক
   if (!isLoggedIn()) {
-    openLogin(); // শুধু লগইন পেজ ওপেন করবে
+    pendingCartAction = function () { openCheckout(); };
+    openLogin();
     return;
   }
+
+  var coBody = document.querySelector('.co-body');
+  var payMethodField = document.getElementById('coPayMethod').parentElement;
+
+  // ডেলিভারি এরিয়া ফিল্ড ইনজেক্ট (একবারই)
+  if (!document.getElementById('coDeliveryArea')) {
+    var df = document.createElement('div');
+    df.className = 'co-field';
+    df.id = 'coDeliveryField';
+    df.innerHTML = '<label>Delivery Area *</label><select id="coDeliveryArea" onchange="updatePaymentInfo()"><option value="inside">Inside Dhaka — ৳' + DELIVERY_INSIDE_DHAKA + '</option><option value="outside">Outside Dhaka — ৳' + DELIVERY_OUTSIDE_DHAKA + '</option></select>';
+    coBody.insertBefore(df, payMethodField);
+  }
+
+  // পেমেন্ট ইনফো ডিভ ইনজেক্ট (একবারই)
+  if (!document.getElementById('coPayInfo')) {
+    var pi = document.createElement('div');
+    pi.id = 'coPayInfo';
+    pi.style.display = 'none';
+    coBody.insertBefore(pi, document.getElementById('coTxnField'));
+  }
+
+  // ইউজার ইনফো প্রি-ফিল
+  getLoggedUser().then(function (u) {
+    if (u) {
+      if (!document.getElementById('coName').value) document.getElementById('coName').value = u.name || '';
+      if (!document.getElementById('coEmail').value) document.getElementById('coEmail').value = u.email || '';
+      if (!document.getElementById('coPhone').value) document.getElementById('coPhone').value = u.phone || '';
+    }
+  });
+
+  // রিসেট
+  document.getElementById('coPayMethod').value = 'cod';
+  document.getElementById('coTxnId').value = '';
+  document.getElementById('coTxnField').style.display = 'none';
+  var payInfo = document.getElementById('coPayInfo');
+  if (payInfo) payInfo.style.display = 'none';
+
   document.getElementById('coOv').classList.add('active');
   document.getElementById('coModal').classList.add('active');
   document.body.style.overflow = 'hidden';
-  if (auth.currentUser) {
-    document.getElementById('coEmail').value = auth.currentUser.email || '';
-    getFirebaseUserProfile(auth.currentUser.uid).then(function(p) {
-      if (p) { document.getElementById('coName').value = p.name || ''; document.getElementById('coPhone').value = p.phone || ''; }
-    });
-  }
-  document.getElementById('coPayMethod').value = 'cod';
-  document.getElementById('coPayInfo').style.display = 'none';
-  document.getElementById('coTxnField').style.display = 'none';
 }
 
 function closeCheckout() {
@@ -687,12 +889,70 @@ function closeCheckout() {
   document.body.style.overflow = '';
 }
 
-async function submitOrder() {
-  if (!isLoggedIn()) { 
-    showToast('Please login to place an order'); 
-    openLogin(); // শুধু লগইন পেজ ওপেন করবে
-    return; 
+function toggleTxnField() {
+  updatePaymentInfo();
+}
+
+// ★ বিকাশ/নগদ সিলেক্ট করলে নাম্বার, ডেলিভারি চার্জ, টোটাল দেখাবে
+function updatePaymentInfo() {
+  var method = document.getElementById('coPayMethod').value;
+  var txnField = document.getElementById('coTxnField');
+  var payInfo = document.getElementById('coPayInfo');
+
+  if (method === 'bkash' || method === 'nagad') {
+    txnField.style.display = 'block';
+
+    var number = method === 'bkash' ? BKASH_NUMBER : NAGAD_NUMBER;
+    var methodName = method === 'bkash' ? 'bKash' : 'Nagad';
+    var methodColor = method === 'bkash' ? '#E2136E' : '#F6921E';
+
+    var areaEl = document.getElementById('coDeliveryArea');
+    var area = areaEl ? areaEl.value : 'inside';
+    var deliveryCharge = area === 'inside' ? DELIVERY_INSIDE_DHAKA : DELIVERY_OUTSIDE_DHAKA;
+    var areaLabel = area === 'inside' ? 'Inside Dhaka' : 'Outside Dhaka';
+
+    var subtotal = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
+    var total = subtotal + deliveryCharge;
+
+    payInfo.style.display = 'block';
+    payInfo.innerHTML =
+      '<div style="background:rgba(212,160,23,.07);border:1px solid rgba(212,160,23,.15);border-radius:8px;padding:20px;margin-bottom:8px">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">' +
+          '<i class="fas fa-' + (method === 'bkash' ? 'mobile-screen-button' : 'wallet') + '" style="font-size:22px;color:' + methodColor + '"></i>' +
+          '<span style="font-family:var(--fh);font-size:15px;font-weight:700;letter-spacing:1px;color:var(--w)">' + methodName + ' Payment</span>' +
+        '</div>' +
+        '<div style="background:var(--bg);border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">' +
+          '<span style="font-size:12px;color:var(--lg);letter-spacing:.5px">Send Money To</span>' +
+          '<span style="font-family:var(--fh);font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px">' + number + '</span>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--lg)">' +
+          '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">' +
+            '<span>Subtotal</span>' +
+            '<span style="color:var(--w)">' + fmtPrice(subtotal) + '</span>' +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">' +
+            '<span>Delivery (' + areaLabel + ')</span>' +
+            '<span style="color:var(--w)">' + fmtPrice(deliveryCharge) + '</span>' +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;padding:10px 0;margin-top:4px;border-top:2px solid var(--gold)">' +
+            '<span style="font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;color:var(--w)">TOTAL TO PAY</span>' +
+            '<span style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--gold)">' + fmtPrice(total) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<p style="font-size:11px;color:rgba(255,255,255,.35);margin-top:12px;line-height:1.6"><i class="fas fa-info-circle" style="margin-right:4px"></i>Send <strong style="color:var(--gold)">' + fmtPrice(total) + '</strong> to <strong style="color:var(--gold)">' + number + '</strong> via ' + methodName + ', then enter your Transaction ID below.</p>' +
+      '</div>';
+
+  } else {
+    txnField.style.display = 'none';
+    payInfo.style.display = 'none';
+    payInfo.innerHTML = '';
   }
+}
+
+/* ==========================================
+   SUBMIT ORDER
+   ========================================== */
+async function submitOrder() {
   var name = document.getElementById('coName').value.trim();
   var email = document.getElementById('coEmail').value.trim();
   var phone = document.getElementById('coPhone').value.trim();
@@ -700,84 +960,128 @@ async function submitOrder() {
   var notes = document.getElementById('coNotes').value.trim();
   var payMethod = document.getElementById('coPayMethod').value;
   var txnId = document.getElementById('coTxnId').value.trim();
+  var areaEl = document.getElementById('coDeliveryArea');
+  var area = areaEl ? areaEl.value : 'inside';
 
-  if (!name || !email || !phone || !address) { showToast('Please fill in all required fields'); return; }
-  if ((payMethod === 'bkash' || payMethod === 'nagad') && !txnId) { showToast('Please enter your ' + payMethod + ' Transaction ID'); return; }
+  if (!name || !email || !phone || !address) {
+    showToast('Please fill in all required fields');
+    return;
+  }
 
-  var total = cart.reduce(function(sum, item) { return sum + (item.price * item.qty); }, 0);
-  var configData = await loadConfig();
-  var currentNextId = configData.nextOrderId || 1001;
-  
-  var orderData = {
-    id: 'FG-' + String(currentNextId).padStart(4, '0'),
-    date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-    customer: { name: name, email: email, phone: phone, address: address, notes: notes },
-    items: cart.map(function(item) { return { id: item.id, name: item.name, price: item.price, color: item.color, size: item.size, qty: item.qty, image: item.image }; }),
-    total: total, payMethod: payMethod, txnId: (payMethod === 'cod') ? 'N/A' : txnId, paid: false, status: 'pending'
-  };
+  if ((payMethod === 'bkash' || payMethod === 'nagad') && !txnId) {
+    showToast('Please enter your Transaction ID');
+    return;
+  }
+
+  var btn = document.querySelector('.co-body .co-submit');
+  var ot = btn.textContent;
+  btn.textContent = 'Placing Order...';
+  btn.disabled = true;
 
   try {
-    await saveOrderToDB(orderData);
-    await saveConfig({ nextOrderId: currentNextId + 1 });
-    cart = []; updateCartUI(); closeCheckout();
-    showToast('Order placed successfully! Order ID: ' + orderData.id);
-    document.getElementById('coName').value = ''; document.getElementById('coEmail').value = ''; document.getElementById('coPhone').value = ''; document.getElementById('coAddress').value = ''; document.getElementById('coNotes').value = '';
-    document.getElementById('coPayMethod').value = 'cod'; document.getElementById('coTxnId').value = ''; document.getElementById('coPayInfo').style.display = 'none'; document.getElementById('coTxnField').style.display = 'none';
-  } catch (error) { console.error("Order Error: ", error); showToast('Failed to place order. Try again.'); }
+    var config = await loadConfig();
+    nextOrderId = config.nextOrderId || 1001;
+    var orderId = 'FG-' + nextOrderId;
+
+    var subtotal = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
+    var deliveryCharge = area === 'inside' ? DELIVERY_INSIDE_DHAKA : DELIVERY_OUTSIDE_DHAKA;
+    var total = subtotal + deliveryCharge;
+
+    var user = await getLoggedUser();
+
+    var order = {
+      id: orderId,
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      customer: {
+        name: name,
+        email: email,
+        phone: phone,
+        address: address
+      },
+      items: cart.map(function (i) {
+        return { id: i.id, name: i.name, image: i.image, price: i.price, color: i.color, size: i.size, qty: i.qty };
+      }),
+      subtotal: subtotal,
+      deliveryCharge: deliveryCharge,
+      deliveryArea: area === 'inside' ? 'Inside Dhaka' : 'Outside Dhaka',
+      total: total,
+      payMethod: payMethod,
+      txnId: (payMethod === 'bkash' || payMethod === 'nagad') ? txnId : 'N/A',
+      paid: payMethod !== 'cod',
+      notes: notes,
+      status: 'pending',
+      userId: user ? user.uid : '',
+      createdAt: new Date().toISOString()
+    };
+
+    await saveOrderToDB(order);
+    await saveConfig({ nextOrderId: nextOrderId + 1 });
+
+    cart = [];
+    updateCartBadge();
+    closeCheckout();
+    closeCart();
+
+    document.getElementById('coName').value = '';
+    document.getElementById('coEmail').value = '';
+    document.getElementById('coPhone').value = '';
+    document.getElementById('coAddress').value = '';
+    document.getElementById('coNotes').value = '';
+    document.getElementById('coTxnId').value = '';
+
+    var payInfo = document.getElementById('coPayInfo');
+    if (payInfo) { payInfo.style.display = 'none'; payInfo.innerHTML = ''; }
+
+    showToast('Order ' + orderId + ' placed successfully!');
+
+  } catch (e) {
+    showToast('Error placing order. Please try again.');
+  }
+
+  btn.textContent = ot;
+  btn.disabled = false;
 }
 
 /* ==========================================
    UTILITY FUNCTIONS
    ========================================== */
-function fmtPrice(n) { return '৳' + Number(n).toLocaleString('en-BD'); }
-function showToast(m) { var t = document.getElementById('toast'); document.getElementById('toastMsg').textContent = m; t.classList.add('show'); setTimeout(function() { t.classList.remove('show'); }, 3000); }
-function subscribeNL(e) { e.preventDefault(); var inp = e.target.querySelector('input'); if(inp.value) { showToast('Subscribed successfully!'); inp.value = ''; } return false; }
+function fmtPrice(n) {
+  if (n === undefined || n === null) n = 0;
+  return '৳' + Number(n).toLocaleString('en-IN');
+}
 
-/* ==========================================
-   CATEGORY PAGE RENDERING HELPERS
-   ========================================== */
-function renderCurrentGrid() {
-  var gid = currentPageInfo.gridId;
-  if (!gid) return;
-  var list = products.slice();
-  var page = currentPageInfo.page;
-  if (page === 'accessories' && currentPageInfo.subFilter) list = list.filter(function(p) { return p.subCategory === currentPageInfo.subFilter; });
-  else if (page !== 'home' && page !== 'offer') list = list.filter(function(p) { return p.category === page; });
-  else if (page === 'offer') list = list.filter(function(p) { return p.oldPrice > 0; });
-  
-  if (_activeSubFilter) list = list.filter(function(p) { return p.subCategory === _activeSubFilter; });
-  if (_activeSizes.length) list = list.filter(function(p) { return p.sizes.some(function(s) { return _activeSizes.indexOf(s) !== -1; }); });
-  
-  document.getElementById(currentPageInfo.countId).textContent = list.length + ' products found';
-  if (!list.length) { document.getElementById(gid).innerHTML = '<div class="no-products"><i class="fas fa-box-open"></i><br>No products found</div>'; return; }
-  var h = ''; list.forEach(function(p) { h += productCard(p); }); document.getElementById(gid).innerHTML = h;
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(function () { t.classList.remove('show'); }, 3000);
 }
-function initCategoryPage(page, gid, cid, fid, subFilter) {
-  var cats = (page === 'accessories') ? SUB_CATS[subFilter] || [] : (SUB_CATS[page] || []);
-  var h = '';
-  if (cats.length) {
-    h += '<div class="filter-group"><h4>Sub Category</h4><div class="filter-sub-btns">';
-    h += '<div class="fsub-btn' + (!_activeSubFilter ? ' active' : '') + '" onclick="_activeSubFilter=\'\';initCategoryPage(\'' + page + '\',\'' + gid + '\',\'' + cid + '\',\'' + fid + '\',\'' + (subFilter||'') + '\')"><i class="fas fa-check"></i> All</div>';
-    cats.forEach(function(c) { h += '<div class="fsub-btn' + (_activeSubFilter === c ? ' active' : '') + '" onclick="_activeSubFilter=\'' + c + '\';initCategoryPage(\'' + page + '\',\'' + gid + '\',\'' + cid + '\',\'' + fid + '\',\'' + (subFilter||'') + '\')"><i class="fas fa-check"></i> ' + SUB_CAT_LABELS[c] + '</div>'; });
-    h += '</div></div>';
+
+function subscribeNL(e) {
+  e.preventDefault();
+  var input = e.target.querySelector('input');
+  if (input.value) {
+    showToast('Subscribed successfully!');
+    input.value = '';
   }
-  h += '<div class="filter-group"><h4>Sizes</h4><div class="filter-size-btns">';
-  var sizes = (page === 'accessories' && subFilter === 'perfume') ? PERFUME_SIZES : ADMIN_SIZES;
-  sizes.forEach(function(s) { h += '<div class="fsize-btn' + (_activeSizes.indexOf(s) !== -1 ? ' active' : '') + '" onclick="toggleFSize(\'' + s + '\')">' + s + '</div>'; });
-  h += '</div><button class="clear-filter-btn" onclick="_activeSizes=[];initCategoryPage(\'' + page + '\',\'' + gid + '\',\'' + cid + '\',\'' + fid + '\',\'' + (subFilter||'') + '\')">Clear Filters</button></div>';
-  document.getElementById(fid).innerHTML = h;
-  renderCurrentGrid();
+  return false;
 }
-function toggleFSize(s) { var i = _activeSizes.indexOf(s); if (i === -1) _activeSizes.push(s); else _activeSizes.splice(i, 1); initCategoryPage(currentPageInfo.page, currentPageInfo.gridId, currentPageInfo.countId, currentPageInfo.filterId, currentPageInfo.subFilter || ''); }
-function renderTrending() { var list = products.filter(function(p) { return p.tag === 'New' || p.tag === 'Hot'; }).slice(0, 8); if(list.length < 4) list = products.slice(0, 8); var h = ''; list.forEach(function(p) { h += productCard(p); }); document.getElementById('trendGrid').innerHTML = h || '<div class="no-products"><i class="fas fa-box-open"></i><br>No products yet</div>'; }
 
 /* ==========================================
    INIT
    ========================================== */
-(async function init() {
+async function init() {
   loadWishlist();
+  updateWlBadge();
   initHeroSlider();
   initScrollEffects();
-  try { products = await loadProducts(); renderTrending(); updateCartUI(); } catch (e) { console.error('Init load error', e); }
   handleHash();
-})();
+  try {
+    products = await loadProducts();
+    renderTrending();
+  } catch (e) {
+    document.getElementById('trendGrid').innerHTML = '<div class="no-products"><i class="fas fa-exclamation-triangle"></i><br>Error loading products</div>';
+  }
+}
+
+init();
